@@ -1,0 +1,202 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "版本号（留空则使用 TOC 的 ## Version）"
+        required: false
+        default: ""
+      game_version:
+        description: "CurseForge 游戏版本名（留空则按 TOC Interface 推导，如 12.1.5）"
+        required: false
+        default: ""
+      changelog:
+        description: "自定义更新日志（留空则用 git log）"
+        required: false
+        default: ""
+      release_type:
+        description: "CurseForge 发布类型"
+        type: choice
+        options:
+          - release
+          - beta
+          - alpha
+        default: release
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve version and metadata
+        id: meta
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          REF_NAME: ${{ github.ref_name }}
+          INPUT_VERSION: ${{ github.event.inputs.version || '' }}
+          INPUT_GAME_VERSION: ${{ github.event.inputs.game_version || '' }}
+          INPUT_CHANGELOG: ${{ github.event.inputs.changelog || '' }}
+          INPUT_RELEASE_TYPE: ${{ github.event.inputs.release_type || '' }}
+        run: |
+          set -euo pipefail
+
+          TOC_VERSION=$(awk -F': *' '/^## Version:/{print $2; exit}' MzxSpecBar.toc)
+          IFACE=$(awk -F': *' '/^## Interface:/{print $2; exit}' MzxSpecBar.toc)
+          AUTO_GV="$((IFACE/10000)).$(((IFACE/100)%100)).$((IFACE%100))"
+          GV="${INPUT_GAME_VERSION:-$AUTO_GV}"
+
+          if [ "$EVENT_NAME" = "push" ]; then
+            TAG="$REF_NAME"
+            RELEASE_TYPE="release"
+            case "$TAG" in
+              *-beta*)  RELEASE_TYPE="beta" ;;
+              *-alpha*) RELEASE_TYPE="alpha" ;;
+            esac
+          else
+            VER="${INPUT_VERSION:-$TOC_VERSION}"
+            TAG="v$VER"
+            RELEASE_TYPE="${INPUT_RELEASE_TYPE:-release}"
+            if ! git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+              git tag "$TAG"
+              git push origin "$TAG"
+            fi
+          fi
+
+          TAG_VERSION="${TAG#v}"
+          BASE_VERSION="${TAG_VERSION%%-*}"
+          if [ "$BASE_VERSION" != "$TOC_VERSION" ]; then
+            echo "::error::tag $TAG ($BASE_VERSION) 与 TOC 版本 $TOC_VERSION 不一致，请先同步 ## Version"
+            exit 1
+          fi
+
+          CHANGELOG="$(mktemp)"
+          PREV_TAG=$(git describe --tags --match 'v*' --abbrev=0 "$TAG^" 2>/dev/null || true)
+          if [ -n "$INPUT_CHANGELOG" ]; then
+            printf '%s\n' "$INPUT_CHANGELOG" > "$CHANGELOG"
+          else
+            {
+              echo "MzxSpecBar $TAG_VERSION"
+              echo
+              git log --no-merges --pretty='* %s' "${PREV_TAG:+$PREV_TAG..}$TAG" || true
+            } > "$CHANGELOG"
+          fi
+
+          {
+            echo "version=$TAG_VERSION"
+            echo "tag=$TAG"
+            echo "game_version=$GV"
+            echo "release_type=$RELEASE_TYPE"
+            echo "changelog=$CHANGELOG"
+            echo "zip=MzxSpecBar-$TAG_VERSION.zip"
+          } >> "$GITHUB_OUTPUT"
+
+          {
+            echo "### Release plan"
+            echo "- tag: \`$TAG\`"
+            echo "- TOC interface: \`$IFACE\` → CurseForge version: \`$GV\`"
+            echo "- release type: \`$RELEASE_TYPE\`"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Build addon zip
+        run: |
+          set -euo pipefail
+          STAGE="$RUNNER_TEMP/pkg/MzxSpecBar"
+          mkdir -p "$STAGE"
+          rsync -a \
+            --exclude '.git/' \
+            --exclude '.github/' \
+            --exclude '.pkgmeta' \
+            --exclude '*.md' \
+            --exclude '*.zip' \
+            --exclude 'icon-source.png' \
+            ./ "$STAGE/"
+          ( cd "$RUNNER_TEMP/pkg" && zip -r -X "$GITHUB_WORKSPACE/${{ steps.meta.outputs.zip }}" MzxSpecBar >/dev/null )
+          unzip -l "$GITHUB_WORKSPACE/${{ steps.meta.outputs.zip }}" | head -30
+
+      - name: Create GitHub release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: MzxSpecBar ${{ steps.meta.outputs.version }}
+          body_path: ${{ steps.meta.outputs.changelog }}
+          files: ${{ steps.meta.outputs.zip }}
+
+      - name: Upload to CurseForge
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+          GV: ${{ steps.meta.outputs.game_version }}
+          RELEASE_TYPE: ${{ steps.meta.outputs.release_type }}
+          ZIP: ${{ steps.meta.outputs.zip }}
+          CHANGELOG_FILE: ${{ steps.meta.outputs.changelog }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CF_API_TOKEN:-}" ] || [ -z "${CF_PROJECT_ID:-}" ]; then
+            echo "::warning::未配置 CF_API_TOKEN secret 或 CF_PROJECT_ID variable，跳过 CurseForge 上传"
+            exit 0
+          fi
+
+          curl -sf -H "X-Api-Token: $CF_API_TOKEN" \
+            "https://wow.curseforge.com/api/game/versions" -o gv.json
+
+          find_id() {
+            jq -r --arg v "$GV" "$1" gv.json | head -1
+          }
+          SHAPE='if type=="array" then .[] else .data[] end'
+          VID=$(find_id "$SHAPE | select(.name==\$v) | .id")
+          if [ -z "$VID" ]; then
+            VID=$(find_id "$SHAPE | select(.name|startswith(\$v)) | .id")
+          fi
+          if [ -z "$VID" ]; then
+            echo "::error::CurseForge 上找不到游戏版本 $GV"
+            jq -r "$SHAPE | .name" gv.json | sort -Vr | head -20
+            exit 1
+          fi
+          echo "CurseForge game version $GV -> id $VID"
+
+          METADATA=$(python3 - "$CHANGELOG_FILE" "$VERSION" "$RELEASE_TYPE" "$VID" <<'PY'
+          import json, sys
+          path, version, release_type, vid = sys.argv[1:5]
+          with open(path, encoding="utf-8", errors="replace") as f:
+              changelog = f.read()
+          print(json.dumps({
+              "changelog": changelog,
+              "changelogType": "markdown",
+              "displayName": "MzxSpecBar " + version,
+              "releaseType": release_type,
+              "gameVersions": [int(vid)],
+          }, ensure_ascii=False))
+          PY
+          )
+          echo "metadata: $METADATA"
+          printf '%s' "$METADATA" | jq -e . >/dev/null
+
+          for attempt in 1 2 3; do
+            CODE=$(curl -sS -o cf-response.json -w '%{http_code}' -X POST \
+              "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file" \
+              -H "X-Api-Token: $CF_API_TOKEN" \
+              --form-string "metadata=$METADATA" \
+              -F "file=@$ZIP" || true)
+            echo "CurseForge upload attempt $attempt -> HTTP $CODE"
+            if [ "$CODE" = "200" ] || [ "$CODE" = "201" ]; then
+              echo "已上传到 CurseForge：$(jq -c '{id, displayName, fileName}' cf-response.json 2>/dev/null || cat cf-response.json)"
+              exit 0
+            fi
+            echo "响应内容：$(head -c 800 cf-response.json)"
+            sleep 10
+          done
+
+          echo "::error::CurseForge 上传失败（HTTP $CODE），见上方响应内容"
+          exit 1

@@ -1,0 +1,34 @@
+## Interface: 120105
+## Title: |cff69ccf0MzxSpecBar|r Action Bar by Spec
+## Title-zhCN: |cff69ccf0MzxSpecBar|r 动作条技能按专精自动排列
+## Title-zhTW: |cff69ccf0MzxSpecBar|r 技能條依專精自動排列
+## Title-koKR: |cff69ccf0MzxSpecBar|r 스펙별 액션바 자동 배치
+## Title-deDE: |cff69ccf0MzxSpecBar|r Aktionsleiste nach Talentspezialisierung
+## Title-frFR: |cff69ccf0MzxSpecBar|r Barres d'action par spécialisation
+## Title-esES: |cff69ccf0MzxSpecBar|r Barra de acciones por especialización
+## Title-esMX: |cff69ccf0MzxSpecBar|r Barra de acciones por especialización
+## Title-ruRU: |cff69ccf0MzxSpecBar|r Панель команд по специализации
+## Title-ptBR: |cff69ccf0MzxSpecBar|r Barra de ações por especialização
+## Title-itIT: |cff69ccf0MzxSpecBar|r Barra azioni per specializzazione
+## Notes: Places spells on your action bars in a fixed order for the current class and specialization, so the default UI cannot scramble them.
+## Notes-zhCN: 按当前职业与专精，把技能以固定顺序放回动作条，避免默认 UI 把它打乱。
+## Notes-zhTW: 依當前職業與專精，把技能以固定順序放回動作條，避免預設 UI 把它打亂。
+## Notes-koKR: 현재 직업과 전문에 따라 스킬을 고정 순서로 액션바에 배치합니다.
+## Notes-deDE: Legt Zauber in fester Reihenfolge entsprechend Klasse und Spezialisierung auf die Aktionsleiste.
+## Notes-frFR: Place les sorts dans un ordre fixe selon la classe et la spécialisation.
+## Notes-esES: Coloca los hechizos en las barras de acción en un orden fijo según clase y especialización.
+## Notes-esMX: Coloca los hechizos en las barras de acción en un orden fijo según clase y especialización.
+## Notes-ruRU: Размещает заклинания на панелях команд в фиксированном порядке по классу и специализации.
+## Notes-ptBR: Coloca os feitiços nas barras de ação em ordem fixa conforme a classe e especialização.
+## Notes-itIT: Colloca le spell sulle barre azioni in ordine fisso in base a classe e specializzazione.
+## Version: 1.0.0
+## Author: Mzx
+## SavedVariables: MzxSpecBarDB
+## SavedVariablesPerCharacter: MzxSpecBarCharDB
+## X-Category: Action Bars
+
+Localization.lua
+Locales\zhCN.lua
+Locales\zhTW.lua
+Core.lua
+Modules\ActionBars.lua

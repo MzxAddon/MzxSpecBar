@@ -1,0 +1,783 @@
+-- MzxSpecBar 核心：配置窗 / 扁平 UI 助手 / 模块注册 / 小地图按钮 / 斜杠 / i18n / 存档
+-- 业务功能一律写在 Modules\ 下，本文件只提供框架与共享封装。
+local ADDON, ns = ...
+local M = {}
+ns.M = M
+local L = ns.L
+
+local Print = function(msg)
+	DEFAULT_CHAT_FRAME:AddMessage("|cffd200MzxSpecBar|r " .. tostring(msg))
+end
+M.Print = Print
+
+-- ------------------------------------------------------------------ 模块系统
+
+function M:RegisterModule(mod)
+	self.moduleList[#self.moduleList + 1] = mod
+	self.modules[mod.key] = mod
+	mod.owner = self
+end
+
+function M:IsModuleEnabled(key)
+	local mod = self.modules[key]
+	if mod and mod.alwaysOn then
+		return true
+	end
+	return (self.db and self.db.modules and self.db.modules[key]) and true or false
+end
+
+function M:SetModuleEnabled(key, on)
+	local mod = self.modules[key]
+	if mod and mod.alwaysOn then
+		return
+	end
+	if not self.db then
+		return
+	end
+	on = on and true or false
+	self.db.modules[key] = on
+	if mod and mod.OnToggle then
+		local ok, err = pcall(mod.OnToggle, mod, on)
+		if not ok then
+			Print(string.format(L["Module %s error: %s"], key, tostring(err)))
+		end
+	end
+	self:RefreshConfigIfOpen()
+end
+
+-- 注册模块事件（同一事件只向框架注册一次；事件会转发给所有已启用模块）
+function M:RegisterModuleEvent(event)
+	self._modEvents = self._modEvents or {}
+	if not self._modEvents[event] then
+		self._modEvents[event] = true
+		if not pcall(self.RegisterEvent, self, event) then
+			self._modEvents[event] = nil
+		end
+	end
+end
+
+function M:OnEvent(event, ...)
+	for _, mod in ipairs(self.moduleList) do
+		if mod.OnEvent and self:IsModuleEnabled(mod.key) then
+			local ok, err = pcall(mod.OnEvent, mod, event, ...)
+			if not ok then
+				Print(string.format(L["Module %s error: %s"], mod.key, tostring(err)))
+			end
+		end
+	end
+end
+
+-- ------------------------------------------------------------------ 存档
+
+local function EnsureDB()
+	local db = MzxSpecBarDB
+	if type(db) ~= "table" then
+		db = {}
+		MzxSpecBarDB = db
+	end
+	if type(db.modules) ~= "table" then
+		db.modules = {}
+	end
+	if type(db.minimapPos) ~= "number" then
+		db.minimapPos = 135
+	end
+	return db
+end
+M.EnsureDB = EnsureDB
+
+local function EnsureCharDB()
+	local cdb = MzxSpecBarCharDB
+	if type(cdb) ~= "table" then
+		cdb = {}
+		MzxSpecBarCharDB = cdb
+	end
+	return cdb
+end
+M.EnsureCharDB = EnsureCharDB
+
+function M:InitDB()
+	self.db = EnsureDB()
+	local charDb = EnsureCharDB()
+	if self.db.locale and not (ns.knownLocales and ns.knownLocales[self.db.locale]) then
+		self.db.locale = nil
+	end
+	for _, mod in ipairs(self.moduleList) do
+		if not mod.alwaysOn and self.db.modules[mod.key] == nil then
+			self.db.modules[mod.key] = mod.defaultEnabled and true or false
+		end
+		if mod.EnsureDB then
+			pcall(mod.EnsureDB, mod, self.db, charDb)
+		end
+	end
+end
+
+function M:ApplyModuleStates()
+	for _, mod in ipairs(self.moduleList) do
+		if mod.OnToggle then
+			pcall(mod.OnToggle, mod, self:IsModuleEnabled(mod.key))
+		end
+	end
+end
+
+function M:LocalizeModuleNames()
+	for _, mod in ipairs(self.moduleList) do
+		if mod.nameKey then
+			mod.name = L[mod.nameKey]
+		end
+	end
+end
+
+-- ------------------------------------------------------------------ 通用 UI 皮肤
+
+-- 扁平边框：内缩填充 + 四条独立 1px 边线；返回 setColors(borderR,G,B,A, fillR,G,B,A)
+function M.MakeFlatSkin(frame, thickness)
+	local t = thickness or 1
+	local fill = frame:CreateTexture(nil, "BACKGROUND")
+	fill:SetPoint("TOPLEFT", t, -t)
+	fill:SetPoint("BOTTOMRIGHT", -t, t)
+	local top = frame:CreateTexture(nil, "ARTWORK")
+	top:SetPoint("TOPLEFT", 0, 0)
+	top:SetPoint("TOPRIGHT", 0, 0)
+	top:SetHeight(t)
+	local bottom = frame:CreateTexture(nil, "ARTWORK")
+	bottom:SetPoint("BOTTOMLEFT", 0, 0)
+	bottom:SetPoint("BOTTOMRIGHT", 0, 0)
+	bottom:SetHeight(t)
+	local left = frame:CreateTexture(nil, "ARTWORK")
+	left:SetPoint("TOPLEFT", 0, 0)
+	left:SetPoint("BOTTOMLEFT", 0, 0)
+	left:SetWidth(t)
+	local right = frame:CreateTexture(nil, "ARTWORK")
+	right:SetPoint("TOPRIGHT", 0, 0)
+	right:SetPoint("BOTTOMRIGHT", 0, 0)
+	right:SetWidth(t)
+
+	local tr, tg, tb, ta = 1, 1, 1, 1
+	local fr, fg, fb, fa = 1, 1, 1, 1
+	local function setColors(borderR, borderG, borderB, borderA, fillR, fillG, fillB, fillA)
+		tr, tg, tb, ta = borderR, borderG, borderB, borderA
+		fr, fg, fb, fa = fillR, fillG, fillB, fillA
+		top:SetColorTexture(tr, tg, tb, ta)
+		bottom:SetColorTexture(tr, tg, tb, ta)
+		left:SetColorTexture(tr, tg, tb, ta)
+		right:SetColorTexture(tr, tg, tb, ta)
+		fill:SetColorTexture(fr, fg, fb, fa)
+	end
+	return setColors
+end
+
+function M.SnapToPixelGrid(frame)
+	local s = UIParent:GetEffectiveScale()
+	local px, py = frame:GetCenter()
+	if px and py then
+		frame:ClearAllPoints()
+		frame:SetPoint("CENTER", UIParent, "BOTTOMLEFT", math.floor(px * s + 0.5) / s, math.floor(py * s + 0.5) / s)
+	end
+end
+
+local FLAT_BTN = {
+	normal = { bg = { 0.16, 0.17, 0.20, 0.85 }, text = { 0.92, 0.92, 0.94 } },
+	hover = { bg = { 0.24, 0.25, 0.29, 0.95 }, text = { 1, 1, 1 } },
+	pushed = { bg = { 0.12, 0.13, 0.15, 0.95 }, text = { 1, 0.82, 0.2 } },
+	selected = { bg = { 0.30, 0.25, 0.10, 0.95 }, text = { 1, 0.82, 0.2 } },
+	disabled = { bg = { 0.12, 0.12, 0.14, 0.70 }, text = { 0.45, 0.45, 0.48 } },
+}
+
+function M.ApplyFlatButtonVisual(b)
+	local enabled = true
+	if b.IsEnabled then
+		enabled = b:IsEnabled()
+	end
+	local style
+	if not enabled then
+		style = FLAT_BTN.disabled
+	elseif b.selected then
+		style = FLAT_BTN.selected
+	elseif b._pushed then
+		style = FLAT_BTN.pushed
+	elseif b._hovered then
+		style = FLAT_BTN.hover
+	else
+		style = FLAT_BTN.normal
+	end
+	if b._setSkin then
+		b._setSkin(0, 0, 0, 0, style.bg[1], style.bg[2], style.bg[3], style.bg[4])
+	end
+	local fs = b:GetFontString()
+	if fs then
+		fs:SetTextColor(style.text[1], style.text[2], style.text[3])
+	end
+	if b.icon then
+		b.icon:SetVertexColor(style.text[1], style.text[2], style.text[3])
+	end
+end
+
+function M.MakeFlatButton(parent, w, h, text, onClick)
+	local b = CreateFrame("Button", nil, parent)
+	b:SetSize(w, h)
+	b._setSkin = M.MakeFlatSkin(b, 1)
+	local fs = b:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	fs:SetPoint("CENTER", 0, 0)
+	fs:SetText(text)
+	b:SetFontString(fs)
+	b._hovered, b._pushed = false, false
+	b:SetScript("OnEnter", function(self)
+		self._hovered = true
+		M.ApplyFlatButtonVisual(self)
+	end)
+	b:SetScript("OnLeave", function(self)
+		self._hovered = false
+		self._pushed = false
+		M.ApplyFlatButtonVisual(self)
+	end)
+	b:SetScript("OnMouseDown", function(self)
+		self._pushed = true
+		M.ApplyFlatButtonVisual(self)
+	end)
+	b:SetScript("OnMouseUp", function(self)
+		self._pushed = false
+		M.ApplyFlatButtonVisual(self)
+	end)
+	b:SetScript("OnEnable", function(self)
+		M.ApplyFlatButtonVisual(self)
+	end)
+	b:SetScript("OnDisable", function(self)
+		M.ApplyFlatButtonVisual(self)
+	end)
+	if onClick then
+		b:SetScript("OnClick", onClick)
+	end
+	M.ApplyFlatButtonVisual(b)
+	return b
+end
+
+-- 给扁平按钮挂一个图标（无文字），原图按整数倍缩放居中显示
+function M.SetButtonIcon(b, texPath, iconSize)
+	local tex = b.icon
+	if not tex then
+		tex = b:CreateTexture(nil, "ARTWORK")
+		b.icon = tex
+	end
+	tex:SetSize(iconSize, iconSize)
+	tex:ClearAllPoints()
+	tex:SetPoint("CENTER")
+	tex:SetTexture(texPath)
+	local fs = b:GetFontString()
+	if fs then
+		fs:SetText("")
+	end
+	M.ApplyFlatButtonVisual(b)
+	return tex
+end
+
+function M.MakeCloseButton(parent)
+	local btn = CreateFrame("Button", nil, parent)
+	btn:SetSize(18, 18)
+	local function bar(rot)
+		local t = btn:CreateTexture(nil, "ARTWORK")
+		t:SetSize(13, 2)
+		t:SetPoint("CENTER")
+		t:SetRotation(rot)
+		t:SetColorTexture(0.62, 0.63, 0.66, 1)
+		return t
+	end
+	local a = bar(math.rad(45))
+	local b = bar(math.rad(-45))
+	local function paint(r, g, bl, al)
+		a:SetColorTexture(r, g, bl, al)
+		b:SetColorTexture(r, g, bl, al)
+	end
+	btn:SetScript("OnEnter", function()
+		paint(1, 0.40, 0.40, 1)
+	end)
+	btn:SetScript("OnLeave", function()
+		paint(0.62, 0.63, 0.66, 1)
+	end)
+	return btn
+end
+
+function M.MakeFlatCheckbox(parent, text, onClick)
+	local cb = CreateFrame("CheckButton", nil, parent)
+	cb:SetSize(16, 16)
+	local bg = cb:CreateTexture(nil, "BACKGROUND")
+	bg:SetAllPoints()
+	bg:SetColorTexture(0.12, 0.13, 0.15, 0.9)
+	local box = M.MakeFlatSkin(cb, 1)
+	box(1, 0.82, 0.2, 0.9, 0.12, 0.13, 0.15, 0.9)
+	local mark = cb:CreateTexture(nil, "OVERLAY")
+	mark:SetSize(10, 10)
+	mark:SetPoint("CENTER", 0, 0)
+	mark:SetColorTexture(1, 0.82, 0.2, 1)
+	mark:SetShown(cb:IsChecked() and true or false)
+	local fs = cb:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+	fs:SetPoint("LEFT", cb, "RIGHT", 6, 0)
+	fs:SetJustifyH("LEFT")
+	fs:SetText(text)
+	local hl = cb:CreateTexture(nil, "HIGHLIGHT")
+	hl:SetAllPoints()
+	hl:SetColorTexture(1, 1, 1, 0.06)
+
+	cb:SetScript("OnClick", function(self)
+		mark:SetShown(self:IsChecked() and true or false)
+		if onClick then
+			onClick(self)
+		end
+	end)
+	cb.SetLabel = function(_, value)
+		fs:SetText(value)
+	end
+	return cb
+end
+
+-- 列表行工厂：新列表一律用它，禁止手搓行
+-- 返回 row：row.icon / row.name / row.sub / row.state
+-- row:SetSelected(on) 金色调 + 2px 金色左强调条；row:SetStripe(on)
+M.LIST_ROW_HEIGHT = 40
+function M.MakeListRow(parent, opts)
+	opts = opts or {}
+	local row = CreateFrame("Button", nil, parent)
+	row:SetHeight(opts.height or M.LIST_ROW_HEIGHT)
+
+	local stripe = row:CreateTexture(nil, "BACKGROUND", nil, -6)
+	stripe:SetAllPoints()
+	stripe:SetColorTexture(1, 1, 1, 0.03)
+	stripe:SetShown(opts.stripe and true or false)
+	row.stripe = stripe
+
+	local hl = row:CreateTexture(nil, "HIGHLIGHT")
+	hl:SetAllPoints()
+	hl:SetColorTexture(1, 1, 1, 0.05)
+
+	local sel = row:CreateTexture(nil, "BACKGROUND", nil, -4)
+	sel:SetAllPoints()
+	sel:SetColorTexture(1, 0.82, 0.2, 0.10)
+	sel:Hide()
+
+	local selBar = row:CreateTexture(nil, "BACKGROUND", nil, -3)
+	selBar:SetPoint("TOPLEFT", 0, 0)
+	selBar:SetPoint("BOTTOMLEFT", 0, 0)
+	selBar:SetWidth(2)
+	selBar:SetColorTexture(1, 0.82, 0.2, 1)
+	selBar:Hide()
+
+	local icon = row:CreateTexture(nil, "ARTWORK")
+	icon:SetSize(opts.iconSize or 22, opts.iconSize or 22)
+	icon:SetPoint("LEFT", 8, 0)
+	row.icon = icon
+
+	local name = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	name:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+	name:SetJustifyH("LEFT")
+	row.name = name
+
+	if not opts.singleLine then
+		local sub = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+		sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -1)
+		sub:SetJustifyH("LEFT")
+		sub:SetTextColor(0.6, 0.6, 0.6)
+		row.sub = sub
+	end
+
+	row.state = row:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	row.state:SetPoint("RIGHT", row, "RIGHT", -6, 0)
+	row.state:SetJustifyH("RIGHT")
+
+	function row:SetSelected(on)
+		sel:SetShown(on and true or false)
+		selBar:SetShown(on and true or false)
+	end
+
+	function row:SetStripe(on)
+		stripe:SetShown(on and true or false)
+	end
+
+	if opts.onClick then
+		row:SetScript("OnClick", opts.onClick)
+	end
+	return row
+end
+
+-- 列表右侧状态图标（主选 / 已选），替代状态文字
+function M.SetStateIcon(row, on, texPath, iconSize)
+	local tex = row.stateIcon
+	if not tex then
+		if row.state then
+			row.state:Hide()
+		end
+		tex = row:CreateTexture(nil, "ARTWORK")
+		tex:SetSize(iconSize or 16, iconSize or 16)
+		tex:SetPoint("RIGHT", row, "RIGHT", -8, 0)
+		tex:SetTexture(texPath or "Interface\\CheckMark")
+		tex:Hide()
+		row.stateIcon = tex
+	end
+	tex:SetShown(on and true or false)
+	return tex
+end
+
+function M.MakeSectionLabel(parent, text)
+	local fs = parent:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	fs:SetText("|cffffd200" .. text .. "|r")
+	fs:SetJustifyH("LEFT")
+	return fs
+end
+
+-- ------------------------------------------------------------------ 设置界面
+
+local GUI_WIDTH = 470
+local GUI_HEIGHT = 480
+
+function M:CreateConfigFrame()
+	if self.configFrame then
+		return self.configFrame
+	end
+	local f = CreateFrame("Frame", "MzxSpecBarConfigFrame", UIParent, "BackdropTemplate")
+	f:SetSize(GUI_WIDTH, GUI_HEIGHT)
+	f:SetPoint("CENTER")
+	-- 独立 strata：整棵树作为一个整体压在所有普通窗口之上，又低于 TOOLTIP
+	f:SetFrameStrata("FULLSCREEN_DIALOG")
+	f:SetFrameLevel((UIParent:GetFrameLevel() or 0) + 20)
+	f:SetClampedToScreen(true)
+	f:SetMovable(true)
+	f:EnableMouse(true)
+	f:RegisterForDrag("LeftButton")
+	f:SetScript("OnDragStart", f.StartMoving)
+	f:SetScript("OnDragStop", function()
+		f:StopMovingOrSizing()
+		M.SnapToPixelGrid(f)
+	end)
+	f:SetBackdrop({
+		bgFile = "Interface\\Buttons\\WHITE8X8",
+		edgeFile = "Interface\\Buttons\\WHITE8X8",
+		edgeSize = 1,
+	})
+	f:SetBackdropColor(0.05, 0.06, 0.07, 0.94)
+	f:SetBackdropBorderColor(0.28, 0.30, 0.35, 1)
+	f:Hide()
+
+	local header = f:CreateTexture(nil, "BACKGROUND")
+	header:SetPoint("TOPLEFT", 1, -1)
+	header:SetPoint("TOPRIGHT", -1, -1)
+	header:SetHeight(30)
+	header:SetColorTexture(0.09, 0.10, 0.12, 0.95)
+
+	local headerLine = f:CreateTexture(nil, "ARTWORK")
+	headerLine:SetPoint("TOPLEFT", 1, -31)
+	headerLine:SetPoint("TOPRIGHT", -1, -31)
+	headerLine:SetHeight(1)
+	headerLine:SetColorTexture(1, 0.82, 0.2, 0.55)
+
+	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+	title:SetPoint("LEFT", header, "LEFT", 12, 0)
+	title:SetText(L["MzxSpecBar Settings"])
+
+	local close = M.MakeCloseButton(f)
+	close:SetPoint("TOPRIGHT", -6, -6)
+	close:SetScript("OnClick", function()
+		f:Hide()
+	end)
+	pcall(tinsert, UISpecialFrames, "MzxSpecBarConfigFrame")
+
+	f.tabs = {}
+	local prev
+	local n = #self.moduleList
+	local gap = 4
+	local tabW = math.floor(((GUI_WIDTH - 24) - gap * (n - 1)) / math.max(n, 1))
+	for i, mod in ipairs(self.moduleList) do
+		local b = M.MakeFlatButton(f, tabW, 24, mod.name or mod.key, nil)
+		b.selected = false
+		b:SetFrameLevel(f:GetFrameLevel() + 3)
+		local key = mod.key
+		b:SetScript("OnClick", function()
+			M:SelectTab(key)
+		end)
+		if i == 1 then
+			b:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -36)
+		else
+			b:SetPoint("LEFT", prev, "RIGHT", gap, 0)
+		end
+		prev = b
+		f.tabs[key] = b
+	end
+
+	f.content = CreateFrame("Frame", nil, f)
+	f.content:SetFrameLevel(f:GetFrameLevel() + 1)
+	f.content:SetPoint("TOPLEFT", f, "TOPLEFT", 12, -72)
+	f.content:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 14)
+
+	self.configFrame = f
+	return f
+end
+
+function M:GetModulePanel(mod)
+	if mod.optionsFrame then
+		return mod.optionsFrame
+	end
+	local f = self.configFrame
+	local p = CreateFrame("Frame", nil, f.content)
+	p:SetAllPoints(f.content)
+	if not mod.alwaysOn then
+		local cb = M.MakeFlatCheckbox(p, L["Enable this module"], function(cbSelf)
+			self:SetModuleEnabled(mod.key, cbSelf:GetChecked())
+		end)
+		cb:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -2)
+		p.enable = cb
+	end
+	mod.optionsFrame = p
+	if mod.BuildOptions then
+		local ok, err = pcall(mod.BuildOptions, mod, p)
+		if not ok then
+			Print(string.format(L["Module %s options error: %s"], mod.key, tostring(err)))
+		end
+	end
+	if mod.RefreshOptions then
+		pcall(mod.RefreshOptions, mod)
+	end
+	return p
+end
+
+function M:SelectTab(key)
+	local f = self.configFrame
+	if not f then
+		return
+	end
+	for _, mod in ipairs(self.moduleList) do
+		local selected = (mod.key == key)
+		local p = self:GetModulePanel(mod)
+		p:SetShown(selected)
+		local tab = f.tabs[mod.key]
+		if tab then
+			tab.selected = selected
+			M.ApplyFlatButtonVisual(tab)
+		end
+		if selected and mod.RefreshOptions then
+			pcall(mod.RefreshOptions, mod)
+		end
+	end
+end
+
+function M:RefreshConfig()
+	local f = self.configFrame
+	if not f or not f:IsShown() then
+		return
+	end
+	for _, mod in ipairs(self.moduleList) do
+		local p = mod.optionsFrame
+		if p and p:IsShown() then
+			if p.enable then
+				p.enable:SetChecked(self:IsModuleEnabled(mod.key))
+			end
+			if mod.RefreshOptions then
+				pcall(mod.RefreshOptions, mod)
+			end
+		end
+	end
+end
+
+function M:RefreshConfigIfOpen()
+	self:RefreshConfig()
+end
+
+function M:OpenConfig()
+	if not self.db then
+		self:InitDB()
+	end
+	local f = self:CreateConfigFrame()
+	f:Show()
+	local first = self.moduleList[1]
+	if first then
+		self:SelectTab(first.key)
+	else
+		self:RefreshConfig()
+	end
+	return f
+end
+
+function M:ToggleConfig()
+	if not self.db then
+		self:InitDB()
+	end
+	if self.configFrame and self.configFrame:IsShown() then
+		self.configFrame:Hide()
+		return
+	end
+	self:OpenConfig()
+end
+
+-- ------------------------------------------------------------------ 小地图按钮
+
+local MINIMAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
+local MINIMAP_RADIUS = 5
+local MINIMAP_DEFAULT_POS = 135
+
+local MINIMAP_SHAPES = {
+	["ROUND"] = { true, true, true, true },
+	["SQUARE"] = { false, false, false, false },
+	["CORNER-TOPLEFT"] = { false, true, true, true },
+	["CORNER-TOPRIGHT"] = { true, true, false, true },
+	["CORNER-BOTTOMLEFT"] = { false, true, true, false },
+	["CORNER-BOTTOMRIGHT"] = { true, true, true, false },
+	["SIDE-LEFT"] = { false, true, true, true },
+	["SIDE-RIGHT"] = { true, true, true, false },
+	["SIDE-TOP"] = { true, true, true, false },
+	["SIDE-BOTTOM"] = { true, false, true, true },
+}
+
+local function PlaceMinimapButton(b, angle)
+	local radius = Minimap:GetSize() / 2 * MINIMAP_RADIUS
+	local shapeSelect, shapePoint = math.cos(angle), math.sin(angle)
+	local quadrant, quadrantCenterPoint = 0, 0
+	for i = 1, 4 do
+		quadrant = math.floor(((shapeSelect + 1) * 2 + (shapePoint + 1) * 2 - 1) * i / 8 + 1)
+		local horizontal, vertical = (shapeSelect > 0 and 2 or 0) + (shapePoint > 0 and 1 or 0) + 1
+		local useQuadrant = (horizontal + vertical) % 2 + 1
+		quadrantCenterPoint = math.floor(quadrant / 2) * 2 + (quadrant % 2)
+		if useQuadrant == horizontal then
+			break
+		end
+	end
+	local x, y = math.cos(quadrant * math.pi / 2), math.sin(quadrant * math.pi / 2)
+	local shapes = MINIMAP_SHAPES
+	local primary = shapes[quadrantCenterPoint]
+	local secondary = shapes[quadrantCenterPoint + 2]
+	if quadrant % 2 == 0 then
+		primary, secondary = secondary, primary
+	end
+	if x < 0 and primary[1] or x > 0 and primary[3] or y < 0 and primary[2] or primary[4] then
+		x = x * radius
+		y = y * radius
+	else
+		x = (x > 0 and 1 or -1) * Minimap:GetSize() / 2
+		y = (y > 0 and 1 or -1) * Minimap:GetSize() / 2
+	end
+	b:ClearAllPoints()
+	b:SetPoint("CENTER", Minimap, "CENTER", x, y)
+end
+
+function M:CreateMinimapButton()
+	local b = CreateFrame("Button", "MzxSpecBarMinimapButton", Minimap)
+	b:SetSize(31, 31)
+	b:RegisterForClicks("LeftButtonUp")
+	b:RegisterForDrag("LeftButton")
+	b:SetFrameStrata("MEDIUM")
+	b:SetFrameLevel(8)
+
+	local border = b:CreateTexture(nil, "BACKGROUND")
+	border:SetPoint("TOPLEFT", 0, 0)
+	border:SetPoint("BOTTOMRIGHT", 0, 0)
+	border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+
+	local bg = b:CreateTexture(nil, "BACKGROUND")
+	bg:SetPoint("TOPLEFT", 8, 8)
+	bg:SetPoint("BOTTOMRIGHT", -8, -8)
+	bg:SetColorTexture(0.05, 0.06, 0.08, 0.97)
+
+	local icon = b:CreateTexture(nil, "ARTWORK")
+	icon:SetSize(18, 18)
+	icon:SetPoint("CENTER", 0, 0)
+	icon:SetTexture(MINIMAP_ICON)
+
+	b:SetScript("OnEnter", function(self)
+		icon:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+		GameTooltip:SetOwner(self, "ANCHOR_NONE")
+		GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
+		GameTooltip:SetText(L["MzxSpecBar Settings"], 1, 1, 1)
+		GameTooltip:AddLine(L["Left-click to open/close settings"], 0.8, 0.8, 0.8)
+		GameTooltip:AddLine(L["Drag to move the button"], 0.6, 0.6, 0.6)
+		GameTooltip:Show()
+	end)
+	b:SetScript("OnLeave", function()
+		icon:SetTexture(MINIMAP_ICON)
+		GameTooltip:Hide()
+	end)
+	b:SetScript("OnClick", function()
+		M:ToggleConfig()
+	end)
+	b:SetScript("OnDragStart", function(self)
+		self:LockHighlight()
+		self.dragging = true
+		self:SetScript("OnDragUpdate", PlaceMinimapButton)
+	end)
+	b:SetScript("OnDragStop", function(self)
+		self:SetScript("OnDragUpdate", nil)
+		self.dragging = false
+		self:UnlockHighlight()
+		local p, r, _, x, y = self:GetCenter()
+		local scale = Minimap:GetEffectiveScale()
+		local angle = math.deg(math.atan2((y - Minimap:GetCenter()) * scale, (x - Minimap:GetCenter()) * scale))
+		if M.db then
+			M.db.minimapPos = angle
+		end
+	end)
+
+	local db = self.db or EnsureDB()
+	PlaceMinimapButton(b, math.rad(db.minimapPos or MINIMAP_DEFAULT_POS))
+	return b
+end
+
+-- ------------------------------------------------------------------ 斜杠命令
+
+function M:Slash(input)
+	local cmd, rest = input:match("^(%S*)%s*(.-)$")
+	cmd = (cmd or ""):lower()
+	if cmd == "" then
+		self:ToggleConfig()
+		return
+	end
+	if cmd == "help" then
+		Print(L["Commands:"])
+		Print(L["  /msb                Open settings"])
+		Print(L["  /msb list           List modules and their state"])
+		Print(L["  /msb on <module>    Enable a module"])
+		Print(L["  /msb off <module>   Disable a module"])
+		local names = {}
+		for _, mod in ipairs(self.moduleList) do
+			names[#names + 1] = mod.key
+		end
+		Print(string.format(L["  Modules: %s"], table.concat(names, ", ")))
+		return
+	end
+	if cmd == "list" then
+		for _, mod in ipairs(self.moduleList) do
+			local state = self:IsModuleEnabled(mod.key) and L["enabled"] or L["disabled"]
+			Print(string.format(L["%s (%s): %s"], mod.key, mod.name or "", state))
+		end
+		return
+	end
+	local on = true
+	if cmd == "on" then
+		on = true
+		cmd = rest
+	elseif cmd == "off" then
+		on = false
+		cmd = rest
+	end
+	cmd = string.lower((rest:gsub("%s+$", "")))
+	if self.modules[cmd] then
+		self:SetModuleEnabled(cmd, on)
+		Print(string.format(L["%s is now %s"], cmd, on and L["enabled"] or L["disabled"]))
+	end
+end
+
+SLASH_MZXSPECBAR1 = "/msb"
+SLASH_MZXSPECBAR2 = "/mzxspecbar"
+SlashCmdList["MZXSPECBAR"] = function(input)
+	M:Slash(input or "")
+end
+
+-- ------------------------------------------------------------------ 启动
+
+self.moduleList = {}
+self.modules = {}
+
+frame = CreateFrame("Frame")
+frame:RegisterEvent("PLAYER_LOGIN")
+frame:SetScript("OnEvent", function()
+	self:InitDB()
+	ns.ApplyLocale(self.db.locale)
+	self:LocalizeModuleNames()
+	self:ApplyModuleStates()
+	if not self.minimapButton then
+		self.minimapButton = self:CreateMinimapButton()
+	end
+end)
