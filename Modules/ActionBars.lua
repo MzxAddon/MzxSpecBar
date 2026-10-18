@@ -20,6 +20,7 @@ local ACTION_SLOT_MAX = 180
 local PET_SLOT_MAX = 10
 local WARN_MAX_LINES = 3
 local MACRO_SCAN_LIMIT = 300
+local MISSED_SLOT_LIST_MAX = 8
 
 local function ClassKey()
 	local _, classFile = UnitClass("player")
@@ -668,9 +669,10 @@ end
 
 function mod:ApplyLayout(layout)
 	if not layout then
-		return 0, 0, 0, false, 0
+		return 0, 0, {}, false, 0
 	end
-	local placed, petPlaced, skipped, created = 0, 0, 0, 0
+	local placed, petPlaced, created = 0, 0, 0
+	local missed = { spell = {}, item = {}, macro = {}, pet = {}, other = {} }
 	ClearCursorSafe()
 	local slotBar = FindBar(layout, "slots")
 	if not slotBar and layout.bars and layout.bars[1] then
@@ -695,7 +697,7 @@ function mod:ApplyLayout(layout)
 		end
 	end
 	if #plan > 0 and usable == 0 then
-		return 0, 0, #plan, true, 0
+		return 0, 0, missed, true, 0
 	end
 	if slotBar then
 		local macroLive = {}
@@ -731,7 +733,16 @@ function mod:ApplyLayout(layout)
 			if landed then
 				placed = placed + 1
 			else
-				skipped = skipped + 1
+				local bucket = "other"
+				if entry.action.t == "macro" then
+					bucket = "macro"
+				elseif entry.action.t == "spell" and not SpellKnown(entry.action.id) then
+					bucket = "spell"
+				elseif entry.action.t == "item" and not ItemKnown(entry.action.id) then
+					bucket = "item"
+				end
+				local list = missed[bucket]
+				list[#list + 1] = entry.slot
 			end
 		end
 	end
@@ -753,13 +764,13 @@ function mod:ApplyLayout(layout)
 				if landed then
 					petPlaced = petPlaced + 1
 				else
-					skipped = skipped + 1
+					missed.pet[#missed.pet + 1] = i
 				end
 			end
 		end
 	end
 	ClearCursorSafe()
-	return placed, petPlaced, skipped, false, created
+	return placed, petPlaced, missed, false, created
 end
 
 function mod:Warn(warnings)
@@ -790,6 +801,19 @@ function mod:Warn(warnings)
 		M.Print("|cffffd200!|r " .. out[i])
 	end
 	self:RefreshOptions()
+end
+
+local function SlotListText(slots)
+	local out = {}
+	local shown = math.min(#slots, MISSED_SLOT_LIST_MAX)
+	for i = 1, shown do
+		out[i] = tostring(slots[i])
+	end
+	local text = table.concat(out, ", ")
+	if #slots > shown then
+		text = text .. ", ..."
+	end
+	return text
 end
 
 local function SkipCountWarn(skipped)
@@ -860,7 +884,7 @@ function mod:ApplyCurrent(silent)
 		end
 		return
 	end
-	local placed, petPlaced, skipped, aborted, created = self:ApplyLayout(layout)
+	local placed, petPlaced, missed, aborted, created = self:ApplyLayout(layout)
 	if aborted then
 		M.Print(L["Nothing to apply: no saved spell, item or macro is available on this character"])
 		self:Warn({})
@@ -880,8 +904,24 @@ function mod:ApplyCurrent(silent)
 			M.Print(L["Nothing was applied - check the saved layouts list"])
 		end
 	end
-	if skipped > 0 then
-		self:Warn({ L["Skipped %d slots: spell, item or macro not placed"]:format(skipped) })
+	local warnings = {}
+	if #missed.spell > 0 then
+		warnings[#warnings + 1] = L["Skipped %d slots: spell not available (%s)"]:format(#missed.spell, SlotListText(missed.spell))
+	end
+	if #missed.item > 0 then
+		warnings[#warnings + 1] = L["Skipped %d slots: item not available (%s)"]:format(#missed.item, SlotListText(missed.item))
+	end
+	if #missed.macro > 0 then
+		warnings[#warnings + 1] = L["Skipped %d slots: macro not placed (%s)"]:format(#missed.macro, SlotListText(missed.macro))
+	end
+	if #missed.pet > 0 then
+		warnings[#warnings + 1] = L["Skipped %d pet actions: not placed (%s)"]:format(#missed.pet, SlotListText(missed.pet))
+	end
+	if #missed.other > 0 then
+		warnings[#warnings + 1] = L["Skipped %d slots: not placed (%s)"]:format(#missed.other, SlotListText(missed.other))
+	end
+	if #warnings > 0 then
+		self:Warn(warnings)
 	else
 		self.warnings = nil
 		self:RefreshOptions()

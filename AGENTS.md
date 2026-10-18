@@ -66,7 +66,7 @@
 - 自动应用**只在登录**：本会话第一次 `PLAYER_ENTERING_WORLD` 延迟 2s；进本/切图不再套用。条件是「模块已启用」+ `mod:IsAutoApplyAllowed()`；不参与自动应用只影响自动套用，保存与手动「应用当前专精」照常可用。
 - 战斗中 `InCombatLockdown()` 要跳过。放置：`C_Spell.PickupSpell` / `C_Item.PickupItem` + `C_ActionBar.PutActionInSlot(slot)`（只传槽位，动作在光标上）；空槽用 `PickupAction` + `ClearCursor`；宠物条用 `PickupSpell` + `PickupPetAction(i)`（交换语义，战斗中被禁）。外部 API 一律 pcall。
 - **恢复必须自证成功**：放置后回读 `GetActionInfo(slot)` / `GetPetActionInfo(i)` 校验，只统计真正落位的数量；动作条清空前先用 `C_Spell.GetSpellInfo` / `C_Item.GetItemInfo` 做可用性预检，**若整个方案一个都不可用则直接放弃、绝不清空动作条**（清空 180 槽后再放不回去＝玩家动作条全毁，是最严重的故障模式）。
-- 提示要诚实：`Applied %d slots` / `Skipped %d slots` 用真实计数，一个都没放上时要明确告诉玩家，而不是报成功。
+- 提示要诚实且**可定位**：`Applied %d slots` 用真实计数，一个都没放上时要明确告诉玩家而不是报成功；**跳过必须按原因分桶并列出槽位号**（`ApplyLayout` 第 3 个返回值是 `missed = {spell, item, macro, pet, other}` 五个槽号数组，不是总数），面板/聊天按桶输出「跳过 N 个槽位：技能不可用（12、45、78）」这类文案，槽位列表最多列 `MISSED_SLOT_LIST_MAX`(8) 个再加 `, ...`；`SpellKnown`/`ItemKnown` 为假归 spell/item 桶，其余落 other 桶，宏一律进 macro 桶。
 - **技能 id / 动作槽 id 不要硬编码猜测，必须实机核对后再写。**
 
 ### i18n / 本地化
