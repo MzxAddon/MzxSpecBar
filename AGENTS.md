@@ -89,6 +89,10 @@
 ### 发布
 - `.github/workflows/release.yml`：推 `v*` 标签或 `workflow_dispatch`（version / game_version / changelog / release_type）→ 校验 TOC `## Version` 与标签一致 → 打包（排除 `.git/`、`.github/`、`*.md`、`*.zip`、图标源 PNG）→ GitHub Release → CurseForge 上传。
 - 版本号改动必须三处同步：`MzxSpecBar.toc` 的 `## Version`、`Core.lua` 的 `M.version`、本文件。
+- **CurseForge 项目描述 = 仓库根目录的 `CurseForgeDescription.md`**（英文 Markdown，随仓库维护，打包时被 `*.md` 排除规则自动剔除）。规矩：
+  - CF API 改不了项目描述，所以**不要只说"需要用户手动粘贴"就收工**——必须**主动把完整 Markdown 内容给出来**（写文件 + 在回复里给出全文或明确文件路径）。
+  - 每次改功能、改限制、改文案后都要**同步更新这个文件**，并在发版时提醒用户"整份复制替换 CF 描述页"。
+  - 描述里的"限制"必须与代码实际行为一致（例如 1.0.1 起宏已支持并会自动创建缺失宏，就不能再写"宏会被跳过"）。
 - CF 上传的已知坑（已在工作流里处理，改动时勿回退）：**metadata 必须用 `--form-string` 发送**（`-F` 会把值里的 `;` 当分段符导致 JSON 被截断，CF 报 `Invalid JSON`）；metadata 用 Python `json.dumps` 生成；上传失败要打印 HTTP 码 + 响应体并重试。
 
 ### 校验
