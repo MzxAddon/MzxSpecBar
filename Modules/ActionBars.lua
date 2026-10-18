@@ -21,6 +21,7 @@ local PET_SLOT_MAX = 10
 local WARN_MAX_LINES = 3
 local MACRO_SCAN_LIMIT = 300
 local MISSED_SLOT_LIST_MAX = 8
+local DETAIL_LINE_MAX = 10
 
 local function ClassKey()
 	local _, classFile = UnitClass("player")
@@ -461,6 +462,38 @@ local function ItemKnown(itemID)
 	return (ok and info ~= nil) and true or false
 end
 
+local function SpellName(spellID)
+	if type(C_Spell) == "table" and type(C_Spell.GetSpellInfo) == "function" then
+		local ok, info = pcall(C_Spell.GetSpellInfo, spellID)
+		if ok and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+			return info.name
+		end
+	end
+	return nil
+end
+
+local function ItemName(itemID)
+	if type(C_Item) == "table" and type(C_Item.GetItemInfo) == "function" then
+		local ok, name = pcall(C_Item.GetItemInfo, itemID)
+		if ok and type(name) == "string" and name ~= "" then
+			return name
+		end
+	end
+	return nil
+end
+
+local function MissedEntry(slot, actionType, id, macroName)
+	local label
+	if actionType == "macro" then
+		label = macroName
+	elseif actionType == "item" then
+		label = ItemName(id)
+	else
+		label = SpellName(id)
+	end
+	return { slot = slot, actionType = actionType, id = PositiveID(id), name = label }
+end
+
 local function ActionAvailable(action, book)
 	if not action then
 		return false
@@ -733,16 +766,17 @@ function mod:ApplyLayout(layout)
 			if landed then
 				placed = placed + 1
 			else
+				local actionType = entry.action.t
 				local bucket = "other"
-				if entry.action.t == "macro" then
+				if actionType == "macro" then
 					bucket = "macro"
-				elseif entry.action.t == "spell" and not SpellKnown(entry.action.id) then
+				elseif actionType == "spell" and not SpellKnown(entry.action.id) then
 					bucket = "spell"
-				elseif entry.action.t == "item" and not ItemKnown(entry.action.id) then
+				elseif actionType == "item" and not ItemKnown(entry.action.id) then
 					bucket = "item"
 				end
 				local list = missed[bucket]
-				list[#list + 1] = entry.slot
+				list[#list + 1] = MissedEntry(entry.slot, actionType, entry.action.id, entry.action.name)
 			end
 		end
 	end
@@ -764,7 +798,7 @@ function mod:ApplyLayout(layout)
 				if landed then
 					petPlaced = petPlaced + 1
 				else
-					missed.pet[#missed.pet + 1] = i
+					missed.pet[#missed.pet + 1] = MissedEntry(i, "pet", action.id)
 				end
 			end
 		end
@@ -773,7 +807,7 @@ function mod:ApplyLayout(layout)
 	return placed, petPlaced, missed, false, created
 end
 
-function mod:Warn(warnings)
+function mod:Warn(warnings, details)
 	local order, counts = {}, {}
 	for _, msg in ipairs(warnings or {}) do
 		if counts[msg] then
@@ -800,20 +834,56 @@ function mod:Warn(warnings)
 	for i = #out, 1, -1 do
 		M.Print("|cffffd200!|r " .. out[i])
 	end
+	for i = 1, #(details or {}) do
+		M.Print("|cffffd200!|r " .. details[i])
+	end
 	self:RefreshOptions()
 end
 
-local function SlotListText(slots)
+local function SlotListText(entries)
 	local out = {}
-	local shown = math.min(#slots, MISSED_SLOT_LIST_MAX)
+	local shown = math.min(#entries, MISSED_SLOT_LIST_MAX)
 	for i = 1, shown do
-		out[i] = tostring(slots[i])
+		out[i] = tostring(entries[i].slot)
 	end
 	local text = table.concat(out, ", ")
-	if #slots > shown then
+	if #entries > shown then
 		text = text .. ", ..."
 	end
 	return text
+end
+
+local function MissedDetailLines(missed)
+	local kinds = { "spell", "item", "macro", "pet", "other" }
+	local total = 0
+	for i = 1, #kinds do
+		total = total + #(missed[kinds[i]] or {})
+	end
+	local lines = {}
+	for i = 1, #kinds do
+		for _, entry in ipairs(missed[kinds[i]] or {}) do
+			if #lines >= DETAIL_LINE_MAX then
+				return lines, total - #lines
+			end
+			local kindText
+			if entry.actionType == "item" then
+				kindText = L["Item"]
+			elseif entry.actionType == "macro" then
+				kindText = L["Macro"]
+			elseif entry.actionType == "pet" then
+				kindText = L["Pet action"]
+			else
+				kindText = L["Skill"]
+			end
+			local label = entry.name or L["Unknown"]
+			if entry.id then
+				lines[#lines + 1] = L["Slot %d: %s (%s %d)"]:format(entry.slot, label, kindText, entry.id)
+			else
+				lines[#lines + 1] = L["Slot %d: %s (%s)"]:format(entry.slot, label, kindText)
+			end
+		end
+	end
+	return lines, total - #lines
 end
 
 local function SkipCountWarn(skipped)
@@ -921,7 +991,11 @@ function mod:ApplyCurrent(silent)
 		warnings[#warnings + 1] = L["Skipped %d slots: not placed (%s)"]:format(#missed.other, SlotListText(missed.other))
 	end
 	if #warnings > 0 then
-		self:Warn(warnings)
+		local details, rest = MissedDetailLines(missed)
+		if rest > 0 then
+			details[#details + 1] = L["and %d more"]:format(rest)
+		end
+		self:Warn(warnings, details)
 	else
 		self.warnings = nil
 		self:RefreshOptions()
