@@ -400,11 +400,48 @@ local function PickupMacroFunc()
 	return nil
 end
 
-local function CanCreateMacro(action)
-	return action.pc == true
-		and type(action.name) == "string" and action.name ~= ""
+local function MacroCreatable(action)
+	return type(action.name) == "string" and action.name ~= ""
 		and type(action.body) == "string"
 		and CreateMacroFunc() ~= nil
+end
+
+local function FindMacroByContent(book, action)
+	local record = book[action.name]
+	if record and (type(action.body) ~= "string" or record.body == action.body) then
+		return { name = action.name, id = record.id }
+	end
+	if type(action.body) == "string" then
+		local names = {}
+		for name in pairs(book) do
+			names[#names + 1] = name
+		end
+		table.sort(names)
+		for i = 1, #names do
+			local other = book[names[i]]
+			if other.body == action.body then
+				return { name = names[i], id = other.id }
+			end
+		end
+	end
+	return nil
+end
+
+local function EnsureMacro(action, book)
+	local existing = FindMacroByContent(book, action)
+	if existing then
+		return existing, false
+	end
+	local create = CreateMacroFunc()
+	if type(create) ~= "function" or not MacroCreatable(action) then
+		return nil, false
+	end
+	local ok, macroID = pcall(create, action.name, action.icon or "INV_Misc_QuestionMark", action.body, action.pc and true or nil)
+	if not ok or not PositiveID(macroID) then
+		return nil, false
+	end
+	book[action.name] = { id = macroID, icon = action.icon, body = action.body }
+	return { name = action.name, id = macroID }, true
 end
 
 local function SpellKnown(spellID)
@@ -423,23 +460,26 @@ local function ItemKnown(itemID)
 	return (ok and info ~= nil) and true or false
 end
 
-local function ActionAvailable(action)
-	if not action or not PositiveID(action.id) then
+local function ActionAvailable(action, book)
+	if not action then
 		return false
 	end
-	if action.t == "spell" then
-		return SpellKnown(action.id)
-	end
-	if action.t == "item" then
+	if action.t == "spell" or action.t == "item" then
+		if not PositiveID(action.id) then
+			return false
+		end
+		if action.t == "spell" then
+			return SpellKnown(action.id)
+		end
 		return ItemKnown(action.id)
 	end
 	if action.t == "macro" then
-		return MacroInfo(action.id) == action.name or MacroInfo(action.name) ~= nil or CanCreateMacro(action)
+		return FindMacroByContent(book, action) ~= nil or MacroCreatable(action)
 	end
 	return false
 end
 
-local function SlotMatches(slot, action)
+local function SlotMatches(slot, action, macroName)
 	local actionType, id = SlotActionInfo(slot)
 	if action.t == "spell" then
 		return actionType == "spell" and id == action.id
@@ -451,7 +491,8 @@ local function SlotMatches(slot, action)
 		if actionType ~= "macro" then
 			return false
 		end
-		return SlotActionText(slot) == action.name or MacroNameAt(id) == action.name
+		local wanted = macroName or action.name
+		return SlotActionText(slot) == wanted or MacroNameAt(id) == wanted
 	end
 	return false
 end
@@ -494,17 +535,7 @@ local function Snapshot(skipped)
 			local name = SlotMacroName(slot, id)
 			if name then
 				local record = book[name] or {}
-				slots[slot] = {
-					t = "macro",
-					id = record.id,
-					name = name,
-					icon = record.icon,
-					body = record.body,
-					pc = not record.id or record.id > globalCount,
-					sub = 0,
-				}
-			else
-				skipped.macros = skipped.macros + 1
+				slots[slot] = { t = "macro", id = record.id, name = name, icon = record.icon, body = record.body, pc = not record.id or record.id > globalCount, sub = 0 }
 			end
 		elseif actionType == "equipmentset" or actionType == "equipmacro" then
 			skipped.sets = skipped.sets + 1
@@ -574,33 +605,22 @@ local function PickupItemID(itemID)
 	return ok and CursorHasSomething()
 end
 
-local function CreateMacroRef(action)
-	local create = CreateMacroFunc()
-	if type(create) ~= "function" or not CanCreateMacro(action) then
-		return false
-	end
-	local ok, macroID = pcall(create, action.name, action.icon or "INV_Misc_QuestionMark", action.body, true)
-	return ok and PositiveID(macroID) ~= nil
-end
-
-local function PickupMacroRef(action, book)
+local function PickupMacroLive(action, live)
 	local pickup = PickupMacroFunc()
 	if type(pickup) ~= "function" then
-		return false, false
+		return false
 	end
-	local record = book and book[action.name] or nil
-	local ok, created = false, false
-	if record and PositiveID(record.id) then
-		ok = pcall(pickup, record.id)
+	local ok = false
+	if live and PositiveID(live.id) then
+		ok = pcall(pickup, live.id)
+	end
+	if not ok and live and type(live.name) == "string" and live.name ~= "" then
+		ok = pcall(pickup, live.name)
 	end
 	if not ok and type(action.name) == "string" and action.name ~= "" then
 		ok = pcall(pickup, action.name)
 	end
-	if not ok and CreateMacroRef(action) then
-		created = true
-		ok = pcall(pickup, action.name)
-	end
-	return ok and CursorHasSomething(), created
+	return ok and CursorHasSomething()
 end
 
 local function PutCursorInSlot(slot)
@@ -670,7 +690,7 @@ function mod:ApplyLayout(layout)
 	local macroBook = MacroBook()
 	local usable = 0
 	for _, entry in ipairs(plan) do
-		if ActionAvailable(entry.action) then
+		if ActionAvailable(entry.action, macroBook) then
 			usable = usable + 1
 		end
 	end
@@ -678,24 +698,34 @@ function mod:ApplyLayout(layout)
 		return 0, 0, #plan, true, 0
 	end
 	if slotBar then
+		local macroLive = {}
+		for _, entry in ipairs(plan) do
+			if entry.action.t == "macro" then
+				local live, made = EnsureMacro(entry.action, macroBook)
+				if live then
+					macroLive[entry.slot] = live
+				end
+				if made then
+					created = created + 1
+				end
+			end
+		end
 		for slot = 1, ACTION_SLOT_MAX do
 			ClearActionSlot(slot)
 		end
 		for _, entry in ipairs(plan) do
-			local picked, made = false, false
+			local live = macroLive[entry.slot]
+			local picked = false
 			if entry.action.t == "spell" then
 				picked = PickupSpellID(entry.action.id)
 			elseif entry.action.t == "item" then
 				picked = PickupItemID(entry.action.id)
 			elseif entry.action.t == "macro" then
-				picked, made = PickupMacroRef(entry.action, macroBook)
-			end
-			if made then
-				created = created + 1
+				picked = PickupMacroLive(entry.action, live)
 			end
 			local landed = false
 			if picked then
-				landed = PutCursorInSlot(entry.slot) and SlotMatches(entry.slot, entry.action)
+				landed = PutCursorInSlot(entry.slot) and SlotMatches(entry.slot, entry.action, live and live.name)
 			end
 			ClearCursorSafe()
 			if landed then
@@ -764,9 +794,6 @@ end
 
 local function SkipCountWarn(skipped)
 	local out = {}
-	if skipped.macros > 0 then
-		out[#out + 1] = L["Skipped %d slots: macro could not be read"]:format(skipped.macros)
-	end
 	if skipped.sets > 0 then
 		out[#out + 1] = L["Skipped %d slots: equipment sets are not saved"]:format(skipped.sets)
 	end
@@ -792,7 +819,7 @@ function mod:StartSave()
 		M.Print(L["Level %d is below the minimum (10)"]:format(level))
 		return
 	end
-	local skipped = { macros = 0, sets = 0, petActions = 0, items = 0, unusable = 0 }
+	local skipped = { sets = 0, petActions = 0, items = 0, unusable = 0 }
 	local snapshot = Snapshot(skipped)
 	local slotBar = snapshot[1]
 	local count = 0
@@ -814,7 +841,7 @@ function mod:StartSave()
 	end
 	M.Print(L["Saved %d slots"]:format(count))
 	if macroCount > 0 then
-		M.Print(L["Macro slots are restored by name; missing character macros are recreated"])
+		M.Print(L["Macro slots are restored by content; missing macros are created first"])
 	end
 	self:RefreshOptions()
 end
