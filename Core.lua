@@ -707,8 +707,7 @@ end
 
 -- ------------------------------------------------------------------ 小地图按钮
 
-local MINIMAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
-local MINIMAP_DISC = "Interface\\Minimap\\UI-Minimap-Background"
+local MINIMAP_ICON = "Interface\\AddOns\\MzxSpecBar\\Textures\\icon.tga"
 local MINIMAP_BUTTON_SIZE = 31
 local MINIMAP_DEFAULT_POS = 135
 
@@ -797,16 +796,11 @@ function M:CreateMinimapButton()
 	border:SetPoint("TOPLEFT", 0, 0)
 	b.border = border
 
-	local disc = b:CreateTexture(nil, "BACKGROUND")
-	disc:SetTexture(MINIMAP_DISC)
-	disc:SetSize(27, 27)
-	disc:SetPoint("CENTER", 0, 0)
-	b.disc = disc
-
-	local bg = b:CreateTexture(nil, "BACKGROUND")
-	bg:SetColorTexture(0.05, 0.06, 0.08, 0.97)
-	bg:SetSize(12, 12)
-	bg:SetPoint("CENTER", 0, 0)
+	local background = b:CreateTexture(nil, "BACKGROUND")
+	background:SetColorTexture(0.05, 0.06, 0.08, 0.97)
+	background:SetSize(12, 12)
+	background:SetPoint("CENTER", 0, 0)
+	b.background = background
 
 	local icon = b:CreateTexture(nil, "ARTWORK")
 	icon:SetSize(18, 18)

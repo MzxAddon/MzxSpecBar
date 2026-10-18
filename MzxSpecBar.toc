@@ -23,6 +23,7 @@
 ## Notes-itIT: Colloca le spell sulle barre azioni in ordine fisso in base a classe e specializzazione.
 ## Version: 1.0.0
 ## Author: Mzx
+## IconTexture: Interface\AddOns\MzxSpecBar\Textures\icon.tga
 ## SavedVariables: MzxSpecBarDB
 ## SavedVariablesPerCharacter: MzxSpecBarCharDB
 ## X-Category: Action Bars
