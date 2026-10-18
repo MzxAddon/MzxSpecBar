@@ -336,6 +336,34 @@ local function MacroGlobalCount()
 	return 0
 end
 
+local function SlotActionText(slot)
+	if type(C_ActionBar) == "table" and type(C_ActionBar.GetActionText) == "function" then
+		local ok, text = pcall(C_ActionBar.GetActionText, slot)
+		if ok and type(text) == "string" and text ~= "" then
+			return text
+		end
+	elseif type(GetActionText) == "function" then
+		local ok, text = pcall(GetActionText, slot)
+		if ok and type(text) == "string" and text ~= "" then
+			return text
+		end
+	end
+	return nil
+end
+
+local function GeneralMacroIndex(name)
+	if type(name) ~= "string" or name == "" then
+		return nil
+	end
+	for index = 1, MacroGlobalCount() do
+		local found = MacroInfo(index)
+		if found == name then
+			return index
+		end
+	end
+	return nil
+end
+
 local function CanCreateMacro(action)
 	return action.pc == true
 		and type(action.name) == "string" and action.name ~= ""
@@ -384,7 +412,7 @@ local function SlotMatches(slot, action)
 		return actionType == "item" and id == action.id
 	end
 	if action.t == "macro" then
-		return actionType == "macro" and (id == action.id or MacroInfo(id) == action.name)
+		return actionType == "macro" and SlotActionText(slot) == action.name
 	end
 	return false
 end
@@ -409,7 +437,6 @@ end
 
 local function Snapshot(skipped)
 	local slots = {}
-	local macroCeiling = MacroGlobalCount()
 	for slot = 1, ACTION_SLOT_MAX do
 		local actionType, id, subType = SlotActionInfo(slot)
 		if actionType == "spell" and PositiveID(id) then
@@ -423,9 +450,19 @@ local function Snapshot(skipped)
 				skipped.items = skipped.items + 1
 			end
 		elseif actionType == "macro" then
-			local name, icon, body = MacroInfo(id)
-			if PositiveID(id) and name then
-				slots[slot] = { t = "macro", id = id, name = name, icon = icon, body = body, pc = id > macroCeiling, sub = 0 }
+			local name = SlotActionText(slot)
+			if name then
+				local macroIndex = GeneralMacroIndex(name)
+				local storedName, icon, body = MacroInfo(name)
+				slots[slot] = {
+					t = "macro",
+					id = macroIndex,
+					name = storedName or name,
+					icon = icon,
+					body = body,
+					pc = macroIndex == nil,
+					sub = 0,
+				}
 			else
 				skipped.macros = skipped.macros + 1
 			end
