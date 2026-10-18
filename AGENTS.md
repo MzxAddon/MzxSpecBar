@@ -6,7 +6,7 @@
 - **主项目内禁止测试代码 / 探针 / 诊断代码**。此类代码必须单独立项、放在本项目外部（独立文件夹或独立仓库），且对本项目零影响：不改动本项目任何文件。
 - **不做未在真实客户端验证过的改动**；不得声称"零错误""零影响"。正式服改动必须在正式服实机验证。
 - 文件夹：`D:\Program Files\World of Warcraft\_retail_\Interface\AddOns\MzxSpecBar\`
-- TOC：`MzxSpecBar.toc`（Interface 120105，版本 1.0.0，`SavedVariables: MzxSpecBarDB` + `SavedVariablesPerCharacter: MzxSpecBarCharDB`，斜杠 `/msb`、`/mzxspecbar`）
+- TOC：`MzxSpecBar.toc`（Interface 120105，版本 1.0.1，`SavedVariables: MzxSpecBarDB` + `SavedVariablesPerCharacter: MzxSpecBarCharDB`，斜杠 `/msb`、`/mzxspecbar`）
 - 加载顺序（按 TOC）：`Localization.lua` → `Locales\*.lua`（zhCN/zhTW）→ `Core.lua` → `Modules\*.lua`
 - 模块（默认开启）：`actionbars`（`key = "actionbars"`, `nameKey = "ActionBars"`），由 `Core.lua` 的 `M:RegisterModule(mod)` 管理，`M:IsModuleEnabled(key)` / `M:SetModuleEnabled(key, on)` 开关。
 - 全局：`_G.MzxSpecBar = M` 的等价物是 `ns.M`（`Core.lua` 里 `ns.M = M`）。
