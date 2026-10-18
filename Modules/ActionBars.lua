@@ -314,15 +314,33 @@ local function SlotActionInfo(slot)
 	return actionType, id, subType
 end
 
-local function MacroName(macroRef)
+local function MacroInfo(macroRef)
 	if type(GetMacroInfo) ~= "function" then
 		return nil
 	end
-	local ok, name = pcall(GetMacroInfo, macroRef)
+	local ok, name, icon, body = pcall(GetMacroInfo, macroRef)
 	if ok and type(name) == "string" and name ~= "" then
-		return name
+		return name, icon, body
 	end
 	return nil
+end
+
+local function MacroGlobalCount()
+	if type(GetNumMacros) ~= "function" then
+		return 0
+	end
+	local ok, globalCount = pcall(GetNumMacros)
+	if ok and type(globalCount) == "number" then
+		return globalCount
+	end
+	return 0
+end
+
+local function CanCreateMacro(action)
+	return action.pc == true
+		and type(action.name) == "string" and action.name ~= ""
+		and type(action.body) == "string"
+		and type(CreateMacro) == "function"
 end
 
 local function SpellKnown(spellID)
@@ -352,7 +370,7 @@ local function ActionAvailable(action)
 		return ItemKnown(action.id)
 	end
 	if action.t == "macro" then
-		return MacroName(action.id) == action.name or MacroName(action.name) ~= nil
+		return MacroInfo(action.id) == action.name or MacroInfo(action.name) ~= nil or CanCreateMacro(action)
 	end
 	return false
 end
@@ -366,7 +384,7 @@ local function SlotMatches(slot, action)
 		return actionType == "item" and id == action.id
 	end
 	if action.t == "macro" then
-		return actionType == "macro" and (id == action.id or MacroName(id) == action.name)
+		return actionType == "macro" and (id == action.id or MacroInfo(id) == action.name)
 	end
 	return false
 end
@@ -391,6 +409,7 @@ end
 
 local function Snapshot(skipped)
 	local slots = {}
+	local macroCeiling = MacroGlobalCount()
 	for slot = 1, ACTION_SLOT_MAX do
 		local actionType, id, subType = SlotActionInfo(slot)
 		if actionType == "spell" and PositiveID(id) then
@@ -404,9 +423,9 @@ local function Snapshot(skipped)
 				skipped.items = skipped.items + 1
 			end
 		elseif actionType == "macro" then
-			local name = MacroName(id)
+			local name, icon, body = MacroInfo(id)
 			if PositiveID(id) and name then
-				slots[slot] = { t = "macro", id = id, name = name, sub = 0 }
+				slots[slot] = { t = "macro", id = id, name = name, icon = icon, body = body, pc = id > macroCeiling, sub = 0 }
 			else
 				skipped.macros = skipped.macros + 1
 			end
@@ -478,18 +497,30 @@ local function PickupItemID(itemID)
 	return ok and CursorHasSomething()
 end
 
-local function PickupMacroRef(action)
-	if type(PickupMacro) ~= "function" then
+local function CreateMacroRef(action)
+	if not CanCreateMacro(action) then
 		return false
 	end
-	local ok = false
-	if MacroName(action.id) == action.name then
+	local ok, macroID = pcall(CreateMacro, action.name, action.icon or "INV_Misc_QuestionMark", action.body, true)
+	return ok and PositiveID(macroID) ~= nil
+end
+
+local function PickupMacroRef(action)
+	if type(PickupMacro) ~= "function" then
+		return false, false
+	end
+	local ok, created = false, false
+	if MacroInfo(action.id) == action.name then
 		ok = pcall(PickupMacro, action.id)
 	end
 	if not ok and type(action.name) == "string" and action.name ~= "" then
 		ok = pcall(PickupMacro, action.name)
 	end
-	return ok and CursorHasSomething()
+	if not ok and CreateMacroRef(action) then
+		created = true
+		ok = pcall(PickupMacro, action.name)
+	end
+	return ok and CursorHasSomething(), created
 end
 
 local function PutCursorInSlot(slot)
@@ -537,9 +568,9 @@ end
 
 function mod:ApplyLayout(layout)
 	if not layout then
-		return 0, 0, 0, false
+		return 0, 0, 0, false, 0
 	end
-	local placed, petPlaced, skipped = 0, 0, 0
+	local placed, petPlaced, skipped, created = 0, 0, 0, 0
 	ClearCursorSafe()
 	local slotBar = FindBar(layout, "slots")
 	if not slotBar and layout.bars and layout.bars[1] then
@@ -563,20 +594,23 @@ function mod:ApplyLayout(layout)
 		end
 	end
 	if #plan > 0 and usable == 0 then
-		return 0, 0, #plan, true
+		return 0, 0, #plan, true, 0
 	end
 	if slotBar then
 		for slot = 1, ACTION_SLOT_MAX do
 			ClearActionSlot(slot)
 		end
 		for _, entry in ipairs(plan) do
-			local picked = false
+			local picked, made = false, false
 			if entry.action.t == "spell" then
 				picked = PickupSpellID(entry.action.id)
 			elseif entry.action.t == "item" then
 				picked = PickupItemID(entry.action.id)
 			elseif entry.action.t == "macro" then
-				picked = PickupMacroRef(entry.action)
+				picked, made = PickupMacroRef(entry.action)
+			end
+			if made then
+				created = created + 1
 			end
 			local landed = false
 			if picked then
@@ -614,7 +648,7 @@ function mod:ApplyLayout(layout)
 		end
 	end
 	ClearCursorSafe()
-	return placed, petPlaced, skipped, false
+	return placed, petPlaced, skipped, false, created
 end
 
 function mod:Warn(warnings)
@@ -693,7 +727,7 @@ function mod:StartSave()
 	end
 	M.Print(L["Saved %d slots"]:format(count))
 	if macroCount > 0 then
-		M.Print(L["Macro slots are restored when a macro of the same name exists"])
+		M.Print(L["Macro slots are restored by name; missing character macros are recreated"])
 	end
 	self:RefreshOptions()
 end
@@ -712,7 +746,7 @@ function mod:ApplyCurrent(silent)
 		end
 		return
 	end
-	local placed, petPlaced, skipped, aborted = self:ApplyLayout(layout)
+	local placed, petPlaced, skipped, aborted, created = self:ApplyLayout(layout)
 	if aborted then
 		M.Print(L["Nothing to apply: no saved spell, item or macro is available on this character"])
 		self:Warn({})
@@ -725,7 +759,10 @@ function mod:ApplyCurrent(silent)
 		if petPlaced > 0 then
 			M.Print(L["Applied %d pet actions"]:format(petPlaced))
 		end
-		if placed == 0 and petPlaced == 0 then
+		if created > 0 then
+			M.Print(L["Created %d macros"]:format(created))
+		end
+		if placed == 0 and petPlaced == 0 and created == 0 then
 			M.Print(L["Nothing was applied - check the saved layouts list"])
 		end
 	end
