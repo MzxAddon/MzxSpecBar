@@ -19,6 +19,7 @@ local APPLY_ON_LOGIN_DELAY = 2
 local ACTION_SLOT_MAX = 180
 local PET_SLOT_MAX = 10
 local WARN_MAX_LINES = 3
+local MACRO_SCAN_LIMIT = 300
 
 local function ClassKey()
 	local _, classFile = UnitClass("player")
@@ -337,29 +338,64 @@ local function MacroGlobalCount()
 end
 
 local function SlotActionText(slot)
+	local text
 	if type(C_ActionBar) == "table" and type(C_ActionBar.GetActionText) == "function" then
-		local ok, text = pcall(C_ActionBar.GetActionText, slot)
-		if ok and type(text) == "string" and text ~= "" then
-			return text
+		local ok, value = pcall(C_ActionBar.GetActionText, slot)
+		if ok and type(value) == "string" and value ~= "" then
+			text = value
 		end
-	elseif type(GetActionText) == "function" then
-		local ok, text = pcall(GetActionText, slot)
-		if ok and type(text) == "string" and text ~= "" then
-			return text
+	end
+	if not text and type(GetActionText) == "function" then
+		local ok, value = pcall(GetActionText, slot)
+		if ok and type(value) == "string" and value ~= "" then
+			text = value
 		end
+	end
+	return text
+end
+
+local function MacroNameAt(actionID)
+	if type(C_Macro) == "table" and type(C_Macro.GetMacroName) == "function" then
+		local ok, name = pcall(C_Macro.GetMacroName, actionID)
+		if ok and type(name) == "string" and name ~= "" then
+			return name
+		end
+	end
+	local name = MacroInfo(actionID)
+	return name
+end
+
+local function SlotMacroName(slot, actionID)
+	return SlotActionText(slot) or MacroNameAt(actionID)
+end
+
+local function MacroBook()
+	local book = {}
+	for index = 1, MACRO_SCAN_LIMIT do
+		local name, icon, body = MacroInfo(index)
+		if name and not book[name] then
+			book[name] = { id = index, icon = icon, body = body }
+		end
+	end
+	return book
+end
+
+local function CreateMacroFunc()
+	if type(CreateMacro) == "function" then
+		return CreateMacro
+	end
+	if type(C_Macro) == "table" and type(C_Macro.CreateMacro) == "function" then
+		return C_Macro.CreateMacro
 	end
 	return nil
 end
 
-local function GeneralMacroIndex(name)
-	if type(name) ~= "string" or name == "" then
-		return nil
+local function PickupMacroFunc()
+	if type(PickupMacro) == "function" then
+		return PickupMacro
 	end
-	for index = 1, MacroGlobalCount() do
-		local found = MacroInfo(index)
-		if found == name then
-			return index
-		end
+	if type(C_Macro) == "table" and type(C_Macro.PickupMacro) == "function" then
+		return C_Macro.PickupMacro
 	end
 	return nil
 end
@@ -368,7 +404,7 @@ local function CanCreateMacro(action)
 	return action.pc == true
 		and type(action.name) == "string" and action.name ~= ""
 		and type(action.body) == "string"
-		and type(CreateMacro) == "function"
+		and CreateMacroFunc() ~= nil
 end
 
 local function SpellKnown(spellID)
@@ -412,7 +448,10 @@ local function SlotMatches(slot, action)
 		return actionType == "item" and id == action.id
 	end
 	if action.t == "macro" then
-		return actionType == "macro" and SlotActionText(slot) == action.name
+		if actionType ~= "macro" then
+			return false
+		end
+		return SlotActionText(slot) == action.name or MacroNameAt(id) == action.name
 	end
 	return false
 end
@@ -437,6 +476,8 @@ end
 
 local function Snapshot(skipped)
 	local slots = {}
+	local book = MacroBook()
+	local globalCount = MacroGlobalCount()
 	for slot = 1, ACTION_SLOT_MAX do
 		local actionType, id, subType = SlotActionInfo(slot)
 		if actionType == "spell" and PositiveID(id) then
@@ -450,17 +491,16 @@ local function Snapshot(skipped)
 				skipped.items = skipped.items + 1
 			end
 		elseif actionType == "macro" then
-			local name = SlotActionText(slot)
+			local name = SlotMacroName(slot, id)
 			if name then
-				local macroIndex = GeneralMacroIndex(name)
-				local storedName, icon, body = MacroInfo(name)
+				local record = book[name] or {}
 				slots[slot] = {
 					t = "macro",
-					id = macroIndex,
-					name = storedName or name,
-					icon = icon,
-					body = body,
-					pc = macroIndex == nil,
+					id = record.id,
+					name = name,
+					icon = record.icon,
+					body = record.body,
+					pc = not record.id or record.id > globalCount,
 					sub = 0,
 				}
 			else
@@ -535,27 +575,30 @@ local function PickupItemID(itemID)
 end
 
 local function CreateMacroRef(action)
-	if not CanCreateMacro(action) then
+	local create = CreateMacroFunc()
+	if type(create) ~= "function" or not CanCreateMacro(action) then
 		return false
 	end
-	local ok, macroID = pcall(CreateMacro, action.name, action.icon or "INV_Misc_QuestionMark", action.body, true)
+	local ok, macroID = pcall(create, action.name, action.icon or "INV_Misc_QuestionMark", action.body, true)
 	return ok and PositiveID(macroID) ~= nil
 end
 
-local function PickupMacroRef(action)
-	if type(PickupMacro) ~= "function" then
+local function PickupMacroRef(action, book)
+	local pickup = PickupMacroFunc()
+	if type(pickup) ~= "function" then
 		return false, false
 	end
+	local record = book and book[action.name] or nil
 	local ok, created = false, false
-	if MacroInfo(action.id) == action.name then
-		ok = pcall(PickupMacro, action.id)
+	if record and PositiveID(record.id) then
+		ok = pcall(pickup, record.id)
 	end
 	if not ok and type(action.name) == "string" and action.name ~= "" then
-		ok = pcall(PickupMacro, action.name)
+		ok = pcall(pickup, action.name)
 	end
 	if not ok and CreateMacroRef(action) then
 		created = true
-		ok = pcall(PickupMacro, action.name)
+		ok = pcall(pickup, action.name)
 	end
 	return ok and CursorHasSomething(), created
 end
@@ -624,6 +667,7 @@ function mod:ApplyLayout(layout)
 		end
 	end
 	local plan = slotBar and CollectSlotActions(slotBar) or {}
+	local macroBook = MacroBook()
 	local usable = 0
 	for _, entry in ipairs(plan) do
 		if ActionAvailable(entry.action) then
@@ -644,7 +688,7 @@ function mod:ApplyLayout(layout)
 			elseif entry.action.t == "item" then
 				picked = PickupItemID(entry.action.id)
 			elseif entry.action.t == "macro" then
-				picked, made = PickupMacroRef(entry.action)
+				picked, made = PickupMacroRef(entry.action, macroBook)
 			end
 			if made then
 				created = created + 1
