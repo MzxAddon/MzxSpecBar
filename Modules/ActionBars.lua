@@ -78,19 +78,19 @@ function mod:EnsureDB(db, charDb)
 		c = {}
 		charDb.actionbars = c
 	end
-	if type(c.skipAutoApply) == "table" then
-		local skip = false
-		for _, v in pairs(c.skipAutoApply) do
-			if v then
-				skip = true
-				break
+	if c.autoApply == nil then
+		local auto = true
+		if type(c.skipAutoApply) == "table" then
+			for _, v in pairs(c.skipAutoApply) do
+				if v then
+					auto = false
+					break
+				end
 			end
+		elseif c.skipAutoApply == true or legacyAutoApply == false then
+			auto = false
 		end
-		c.autoApply = not skip
-	elseif c.skipAutoApply == nil then
-		c.autoApply = legacyAutoApply == false and false or true
-	else
-		c.autoApply = c.skipAutoApply and false or true
+		c.autoApply = auto
 	end
 	c.skipAutoApply = nil
 	self.charSettings = c
@@ -799,6 +799,7 @@ function mod:BuildOptions(p)
 		self.charSettings.autoApply = cb:GetChecked() and true or false
 	end)
 	auto:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -52)
+	auto:SetChecked(self:IsAutoApplyAllowed())
 	p.autoApply = auto
 
 	local saveOne = M.MakeFlatButton(p, 138, 26, L["Save current specialization"], function()
