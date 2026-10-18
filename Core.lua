@@ -1,12 +1,16 @@
 -- MzxSpecBar 核心：配置窗 / 扁平 UI 助手 / 模块注册 / 小地图按钮 / 斜杠 / i18n / 存档
 -- 业务功能一律写在 Modules\ 下，本文件只提供框架与共享封装。
 local ADDON, ns = ...
-local M = {}
+local M = CreateFrame("Frame")
 ns.M = M
 local L = ns.L
 
+M.version = "1.0.0"
+M.moduleList = {}
+M.modules = {}
+
 local Print = function(msg)
-	DEFAULT_CHAT_FRAME:AddMessage("|cffd200MzxSpecBar|r " .. tostring(msg))
+	DEFAULT_CHAT_FRAME:AddMessage("|cffffd200MzxSpecBar|r " .. tostring(msg))
 end
 M.Print = Print
 
@@ -57,6 +61,20 @@ function M:RegisterModuleEvent(event)
 end
 
 function M:OnEvent(event, ...)
+	if event == "PLAYER_LOGIN" and not self._booted then
+		self._booted = true
+		self:InitDB()
+		local loc = self.db.locale
+		if not loc or not (ns.knownLocales and ns.knownLocales[loc]) then
+			loc = GetLocale()
+		end
+		ns.ApplyLocale(loc)
+		self:LocalizeModuleNames()
+		self:ApplyModuleStates()
+		if not self.minimapButton then
+			self.minimapButton = self:CreateMinimapButton()
+		end
+	end
 	for _, mod in ipairs(self.moduleList) do
 		if mod.OnEvent and self:IsModuleEnabled(mod.key) then
 			local ok, err = pcall(mod.OnEvent, mod, event, ...)
@@ -66,6 +84,9 @@ function M:OnEvent(event, ...)
 		end
 	end
 end
+
+M:SetScript("OnEvent", M.OnEvent)
+M:RegisterEvent("PLAYER_LOGIN")
 
 -- ------------------------------------------------------------------ 存档
 
@@ -296,19 +317,26 @@ function M.MakeCloseButton(parent)
 	return btn
 end
 
+local function CheckedState(cb)
+	if type(cb.GetChecked) == "function" then
+		local ok, checked = pcall(cb.GetChecked, cb)
+		if ok then
+			return checked and true or false
+		end
+	end
+	return false
+end
+
 function M.MakeFlatCheckbox(parent, text, onClick)
 	local cb = CreateFrame("CheckButton", nil, parent)
 	cb:SetSize(16, 16)
 	local bg = cb:CreateTexture(nil, "BACKGROUND")
 	bg:SetAllPoints()
-	bg:SetColorTexture(0.12, 0.13, 0.15, 0.9)
-	local box = M.MakeFlatSkin(cb, 1)
-	box(1, 0.82, 0.2, 0.9, 0.12, 0.13, 0.15, 0.9)
+	bg:SetColorTexture(0.13, 0.14, 0.16, 0.85)
 	local mark = cb:CreateTexture(nil, "OVERLAY")
-	mark:SetSize(10, 10)
+	mark:SetSize(12, 12)
 	mark:SetPoint("CENTER", 0, 0)
 	mark:SetColorTexture(1, 0.82, 0.2, 1)
-	mark:SetShown(cb:IsChecked() and true or false)
 	local fs = cb:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
 	fs:SetPoint("LEFT", cb, "RIGHT", 6, 0)
 	fs:SetJustifyH("LEFT")
@@ -317,8 +345,18 @@ function M.MakeFlatCheckbox(parent, text, onClick)
 	hl:SetAllPoints()
 	hl:SetColorTexture(1, 1, 1, 0.06)
 
+	local function refresh(self)
+		mark:SetShown(CheckedState(self))
+	end
+
+	cb:SetScript("OnEnter", function()
+		hl:SetColorTexture(1, 1, 1, 0.12)
+	end)
+	cb:SetScript("OnLeave", function()
+		hl:SetColorTexture(1, 1, 1, 0.06)
+	end)
 	cb:SetScript("OnClick", function(self)
-		mark:SetShown(self:IsChecked() and true or false)
+		refresh(self)
 		if onClick then
 			onClick(self)
 		end
@@ -326,6 +364,12 @@ function M.MakeFlatCheckbox(parent, text, onClick)
 	cb.SetLabel = function(_, value)
 		fs:SetText(value)
 	end
+	local setChecked = cb.SetChecked
+	cb.SetChecked = function(self, ...)
+		setChecked(self, ...)
+		refresh(self)
+	end
+	refresh(cb)
 	return cb
 end
 
@@ -365,14 +409,15 @@ function M.MakeListRow(parent, opts)
 	icon:SetPoint("LEFT", 8, 0)
 	row.icon = icon
 
+	local textLeft = (opts.iconSize or 22) + 16
 	local name = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-	name:SetPoint("LEFT", icon, "RIGHT", 8, 0)
+	name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
 	name:SetJustifyH("LEFT")
 	row.name = name
 
 	if not opts.singleLine then
 		local sub = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-		sub:SetPoint("TOPLEFT", name, "BOTTOMLEFT", 0, -1)
+		sub:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -23)
 		sub:SetJustifyH("LEFT")
 		sub:SetTextColor(0.6, 0.6, 0.6)
 		row.sub = sub
@@ -425,7 +470,31 @@ end
 -- ------------------------------------------------------------------ 设置界面
 
 local GUI_WIDTH = 470
-local GUI_HEIGHT = 480
+local GUI_HEIGHT = 544
+local CONFIG_STRATA = "FULLSCREEN_DIALOG"
+local CONFIG_LEVEL = 9000
+local CONFIG_LEVEL_MAX = 9999
+local configRaiseStep = 0
+
+function M:RaiseConfigFrame()
+	local f = self.configFrame
+	if not f then
+		return
+	end
+	configRaiseStep = configRaiseStep + 1
+	local base = CONFIG_LEVEL + configRaiseStep
+	if base > CONFIG_LEVEL_MAX then
+		configRaiseStep = 0
+		base = CONFIG_LEVEL
+	end
+	f:SetFrameLevel(base)
+	if f.content then
+		f.content:SetFrameLevel(base + 1)
+	end
+	for _, tab in pairs(f.tabs or {}) do
+		tab:SetFrameLevel(base + 3)
+	end
+end
 
 function M:CreateConfigFrame()
 	if self.configFrame then
@@ -434,9 +503,8 @@ function M:CreateConfigFrame()
 	local f = CreateFrame("Frame", "MzxSpecBarConfigFrame", UIParent, "BackdropTemplate")
 	f:SetSize(GUI_WIDTH, GUI_HEIGHT)
 	f:SetPoint("CENTER")
-	-- 独立 strata：整棵树作为一个整体压在所有普通窗口之上，又低于 TOOLTIP
-	f:SetFrameStrata("FULLSCREEN_DIALOG")
-	f:SetFrameLevel((UIParent:GetFrameLevel() or 0) + 20)
+	f:SetFrameStrata(CONFIG_STRATA)
+	f:SetFrameLevel(CONFIG_LEVEL)
 	f:SetClampedToScreen(true)
 	f:SetMovable(true)
 	f:EnableMouse(true)
@@ -444,6 +512,17 @@ function M:CreateConfigFrame()
 	f:SetScript("OnDragStart", f.StartMoving)
 	f:SetScript("OnDragStop", function()
 		f:StopMovingOrSizing()
+		M:RaiseConfigFrame()
+		M.SnapToPixelGrid(f)
+	end)
+	f:SetScript("OnMouseDown", function()
+		M:RaiseConfigFrame()
+	end)
+	f:SetScript("OnShow", function()
+		if f.title then
+			f.title:SetText(L["MzxSpecBar Settings"])
+		end
+		M:RaiseConfigFrame()
 		M.SnapToPixelGrid(f)
 	end)
 	f:SetBackdrop({
@@ -458,18 +537,19 @@ function M:CreateConfigFrame()
 	local header = f:CreateTexture(nil, "BACKGROUND")
 	header:SetPoint("TOPLEFT", 1, -1)
 	header:SetPoint("TOPRIGHT", -1, -1)
-	header:SetHeight(30)
-	header:SetColorTexture(0.09, 0.10, 0.12, 0.95)
+	header:SetHeight(26)
+	header:SetColorTexture(0.11, 0.12, 0.14, 0.92)
 
 	local headerLine = f:CreateTexture(nil, "ARTWORK")
-	headerLine:SetPoint("TOPLEFT", 1, -31)
-	headerLine:SetPoint("TOPRIGHT", -1, -31)
+	headerLine:SetPoint("TOPLEFT", header, "BOTTOMLEFT", 0, 0)
+	headerLine:SetPoint("TOPRIGHT", header, "BOTTOMRIGHT", 0, 0)
 	headerLine:SetHeight(1)
-	headerLine:SetColorTexture(1, 0.82, 0.2, 0.55)
+	headerLine:SetColorTexture(1.0, 0.82, 0.20, 0.45)
 
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("LEFT", header, "LEFT", 12, 0)
 	title:SetText(L["MzxSpecBar Settings"])
+	f.title = title
 
 	local close = M.MakeCloseButton(f)
 	close:SetPoint("TOPRIGHT", -6, -6)
@@ -482,7 +562,9 @@ function M:CreateConfigFrame()
 	local prev
 	local n = #self.moduleList
 	local gap = 4
-	local tabW = math.floor(((GUI_WIDTH - 24) - gap * (n - 1)) / math.max(n, 1))
+	local avail = (f:GetWidth() or GUI_WIDTH) - 24
+	local tabW = math.max(math.floor((avail - gap * (n - 1)) / math.max(n, 1)), 40)
+	local lastTabWidth = tabW
 	for i, mod in ipairs(self.moduleList) do
 		local b = M.MakeFlatButton(f, tabW, 24, mod.name or mod.key, nil)
 		b.selected = false
@@ -499,6 +581,24 @@ function M:CreateConfigFrame()
 		prev = b
 		f.tabs[key] = b
 	end
+	f:SetScript("OnSizeChanged", function(self, w)
+		if not w or w <= 0 then
+			return
+		end
+		local count = math.max(#self.moduleList, 1)
+		local inner = math.floor((w - 24 - 4 * (count - 1)) / count)
+		if inner < 40 then
+			inner = 40
+		end
+		if inner == lastTabWidth then
+			return
+		end
+		lastTabWidth = inner
+		for _, b in pairs(self.tabs) do
+			b:SetWidth(inner)
+		end
+	end)
+	f.lastTabWidth = lastTabWidth
 
 	f.content = CreateFrame("Frame", nil, f)
 	f.content:SetFrameLevel(f:GetFrameLevel() + 1)
@@ -521,6 +621,7 @@ function M:GetModulePanel(mod)
 			self:SetModuleEnabled(mod.key, cbSelf:GetChecked())
 		end)
 		cb:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -2)
+		cb:SetChecked(self:IsModuleEnabled(mod.key))
 		p.enable = cb
 	end
 	mod.optionsFrame = p
@@ -607,87 +708,123 @@ end
 -- ------------------------------------------------------------------ 小地图按钮
 
 local MINIMAP_ICON = "Interface\\Icons\\INV_Misc_Map_01"
-local MINIMAP_RADIUS = 5
+local MINIMAP_DISC = "Interface\\Minimap\\UI-Minimap-Background"
+local MINIMAP_BUTTON_SIZE = 31
 local MINIMAP_DEFAULT_POS = 135
+
+local MINIMAP_RADIUS = 5
 
 local MINIMAP_SHAPES = {
 	["ROUND"] = { true, true, true, true },
 	["SQUARE"] = { false, false, false, false },
-	["CORNER-TOPLEFT"] = { false, true, true, true },
-	["CORNER-TOPRIGHT"] = { true, true, false, true },
-	["CORNER-BOTTOMLEFT"] = { false, true, true, false },
-	["CORNER-BOTTOMRIGHT"] = { true, true, true, false },
-	["SIDE-LEFT"] = { false, true, true, true },
-	["SIDE-RIGHT"] = { true, true, true, false },
-	["SIDE-TOP"] = { true, true, true, false },
-	["SIDE-BOTTOM"] = { true, false, true, true },
+	["CORNER-TOPLEFT"] = { false, false, false, true },
+	["CORNER-TOPRIGHT"] = { false, false, true, false },
+	["CORNER-BOTTOMLEFT"] = { false, true, false, false },
+	["CORNER-BOTTOMRIGHT"] = { true, false, false, false },
+	["SIDE-LEFT"] = { false, true, false, true },
+	["SIDE-RIGHT"] = { true, false, true, false },
+	["SIDE-TOP"] = { false, false, true, true },
+	["SIDE-BOTTOM"] = { true, true, false, false },
+	["TRICORNER-TOPLEFT"] = { false, true, true, true },
+	["TRICORNER-TOPRIGHT"] = { true, false, true, true },
+	["TRICORNER-BOTTOMLEFT"] = { true, true, false, true },
+	["TRICORNER-BOTTOMRIGHT"] = { true, true, true, false },
 }
 
-local function PlaceMinimapButton(b, angle)
-	local radius = Minimap:GetSize() / 2 * MINIMAP_RADIUS
-	local shapeSelect, shapePoint = math.cos(angle), math.sin(angle)
-	local quadrant, quadrantCenterPoint = 0, 0
-	for i = 1, 4 do
-		quadrant = math.floor(((shapeSelect + 1) * 2 + (shapePoint + 1) * 2 - 1) * i / 8 + 1)
-		local horizontal, vertical = (shapeSelect > 0 and 2 or 0) + (shapePoint > 0 and 1 or 0) + 1
-		local useQuadrant = (horizontal + vertical) % 2 + 1
-		quadrantCenterPoint = math.floor(quadrant / 2) * 2 + (quadrant % 2)
-		if useQuadrant == horizontal then
-			break
+local function MinimapShape()
+	if type(GetMinimapShape) == "function" then
+		local ok, value = pcall(GetMinimapShape)
+		if ok and value then
+			return value
 		end
 	end
-	local x, y = math.cos(quadrant * math.pi / 2), math.sin(quadrant * math.pi / 2)
-	local shapes = MINIMAP_SHAPES
-	local primary = shapes[quadrantCenterPoint]
-	local secondary = shapes[quadrantCenterPoint + 2]
-	if quadrant % 2 == 0 then
-		primary, secondary = secondary, primary
+	if type(GetCVar) == "function" then
+		local ok, value = pcall(GetCVar, "minimapShape")
+		if ok and value then
+			return value
+		end
 	end
-	if x < 0 and primary[1] or x > 0 and primary[3] or y < 0 and primary[2] or primary[4] then
-		x = x * radius
-		y = y * radius
+	return "ROUND"
+end
+
+function M:UpdateMinimapButtonPosition(position)
+	local b = self.minimapButton
+	if not b then
+		return
+	end
+	local angle = math.rad(position or MINIMAP_DEFAULT_POS)
+	local x, y, q = math.cos(angle), math.sin(angle), 1
+	if x < 0 then
+		q = q + 1
+	end
+	if y > 0 then
+		q = q + 2
+	end
+	local quads = MINIMAP_SHAPES[MinimapShape()] or MINIMAP_SHAPES["ROUND"]
+	local w = (Minimap:GetWidth() / 2) + MINIMAP_RADIUS
+	local h = (Minimap:GetHeight() / 2) + MINIMAP_RADIUS
+	if quads[q] then
+		x, y = x * w, y * h
 	else
-		x = (x > 0 and 1 or -1) * Minimap:GetSize() / 2
-		y = (y > 0 and 1 or -1) * Minimap:GetSize() / 2
+		local dw = math.sqrt(2 * w * w) - 10
+		local dh = math.sqrt(2 * h * h) - 10
+		x = math.max(-w, math.min(x * dw, w))
+		y = math.max(-h, math.min(y * dh, h))
 	end
 	b:ClearAllPoints()
 	b:SetPoint("CENTER", Minimap, "CENTER", x, y)
 end
 
+function M:PlaceMinimapButton()
+	local db = self.db or EnsureDB()
+	if type(db.minimapPos) ~= "number" then
+		db.minimapPos = MINIMAP_DEFAULT_POS
+	end
+	self:UpdateMinimapButtonPosition(db.minimapPos)
+end
+
 function M:CreateMinimapButton()
 	local b = CreateFrame("Button", "MzxSpecBarMinimapButton", Minimap)
-	b:SetSize(31, 31)
+	b:SetSize(MINIMAP_BUTTON_SIZE, MINIMAP_BUTTON_SIZE)
 	b:RegisterForClicks("LeftButtonUp")
 	b:RegisterForDrag("LeftButton")
 	b:SetFrameStrata("MEDIUM")
 	b:SetFrameLevel(8)
 
-	local border = b:CreateTexture(nil, "BACKGROUND")
+	local border = b:CreateTexture(nil, "OVERLAY")
+	border:SetTexture(136430)
+	border:SetSize(50, 50)
 	border:SetPoint("TOPLEFT", 0, 0)
-	border:SetPoint("BOTTOMRIGHT", 0, 0)
-	border:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
+	b.border = border
+
+	local disc = b:CreateTexture(nil, "BACKGROUND")
+	disc:SetTexture(MINIMAP_DISC)
+	disc:SetSize(27, 27)
+	disc:SetPoint("CENTER", 0, 0)
+	b.disc = disc
 
 	local bg = b:CreateTexture(nil, "BACKGROUND")
-	bg:SetPoint("TOPLEFT", 8, 8)
-	bg:SetPoint("BOTTOMRIGHT", -8, -8)
 	bg:SetColorTexture(0.05, 0.06, 0.08, 0.97)
+	bg:SetSize(12, 12)
+	bg:SetPoint("CENTER", 0, 0)
 
 	local icon = b:CreateTexture(nil, "ARTWORK")
 	icon:SetSize(18, 18)
 	icon:SetPoint("CENTER", 0, 0)
 	icon:SetTexture(MINIMAP_ICON)
+	b.icon = icon
 
-	b:SetScript("OnEnter", function(self)
-		icon:SetTexture("Interface\\Minimap\\MiniMap-TrackingBorder")
-		GameTooltip:SetOwner(self, "ANCHOR_NONE")
-		GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -4)
+	b:SetHighlightTexture(136477)
+
+	b:SetScript("OnEnter", function()
+		GameTooltip:SetOwner(b, "ANCHOR_NONE")
+		GameTooltip:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -4)
 		GameTooltip:SetText(L["MzxSpecBar Settings"], 1, 1, 1)
 		GameTooltip:AddLine(L["Left-click to open/close settings"], 0.8, 0.8, 0.8)
 		GameTooltip:AddLine(L["Drag to move the button"], 0.6, 0.6, 0.6)
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", function()
-		icon:SetTexture(MINIMAP_ICON)
 		GameTooltip:Hide()
 	end)
 	b:SetScript("OnClick", function()
@@ -695,23 +832,28 @@ function M:CreateMinimapButton()
 	end)
 	b:SetScript("OnDragStart", function(self)
 		self:LockHighlight()
-		self.dragging = true
-		self:SetScript("OnDragUpdate", PlaceMinimapButton)
+		GameTooltip:Hide()
+		local function onUpdate()
+			local mx, my = Minimap:GetCenter()
+			local px, py = GetCursorPosition()
+			local scale = Minimap:GetEffectiveScale() or 1
+			px, py = px / scale, py / scale
+			local pos = math.deg(math.atan2(py - my, px - mx)) % 360
+			if M.db then
+				M.db.minimapPos = pos
+			end
+			M:UpdateMinimapButtonPosition(pos)
+		end
+		b:SetScript("OnUpdate", onUpdate)
 	end)
 	b:SetScript("OnDragStop", function(self)
-		self:SetScript("OnDragUpdate", nil)
-		self.dragging = false
+		b:SetScript("OnUpdate", nil)
 		self:UnlockHighlight()
-		local p, r, _, x, y = self:GetCenter()
-		local scale = Minimap:GetEffectiveScale()
-		local angle = math.deg(math.atan2((y - Minimap:GetCenter()) * scale, (x - Minimap:GetCenter()) * scale))
-		if M.db then
-			M.db.minimapPos = angle
-		end
+		M:PlaceMinimapButton()
 	end)
 
-	local db = self.db or EnsureDB()
-	PlaceMinimapButton(b, math.rad(db.minimapPos or MINIMAP_DEFAULT_POS))
+	self.minimapButton = b
+	self:PlaceMinimapButton()
 	return b
 end
 
@@ -744,13 +886,13 @@ function M:Slash(input)
 		end
 		return
 	end
-	local on = true
+	local on
 	if cmd == "on" then
 		on = true
-		cmd = rest
 	elseif cmd == "off" then
 		on = false
-		cmd = rest
+	else
+		return
 	end
 	cmd = string.lower((rest:gsub("%s+$", "")))
 	if self.modules[cmd] then
@@ -764,20 +906,3 @@ SLASH_MZXSPECBAR2 = "/mzxspecbar"
 SlashCmdList["MZXSPECBAR"] = function(input)
 	M:Slash(input or "")
 end
-
--- ------------------------------------------------------------------ 启动
-
-self.moduleList = {}
-self.modules = {}
-
-frame = CreateFrame("Frame")
-frame:RegisterEvent("PLAYER_LOGIN")
-frame:SetScript("OnEvent", function()
-	self:InitDB()
-	ns.ApplyLocale(self.db.locale)
-	self:LocalizeModuleNames()
-	self:ApplyModuleStates()
-	if not self.minimapButton then
-		self.minimapButton = self:CreateMinimapButton()
-	end
-end)
