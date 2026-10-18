@@ -430,7 +430,7 @@ local function Snapshot(skipped)
 				skipped.macros = skipped.macros + 1
 			end
 		elseif actionType == "equipmentset" or actionType == "equipmacro" then
-			skipped.macros = skipped.macros + 1
+			skipped.sets = skipped.sets + 1
 		end
 	end
 	local petSlots = {}
@@ -440,7 +440,7 @@ local function Snapshot(skipped)
 			if ok and PositiveID(spellID) then
 				petSlots[i] = { t = "pet", id = spellID, sub = 0 }
 			elseif ok and type(name) == "string" and name ~= "" then
-				skipped.macros = skipped.macros + 1
+				skipped.petActions = skipped.petActions + 1
 			end
 		end
 	end
@@ -684,7 +684,13 @@ end
 local function SkipCountWarn(skipped)
 	local out = {}
 	if skipped.macros > 0 then
-		out[#out + 1] = L["Skipped %d slots: macro, set or pet action not saved"]:format(skipped.macros)
+		out[#out + 1] = L["Skipped %d slots: macro could not be read"]:format(skipped.macros)
+	end
+	if skipped.sets > 0 then
+		out[#out + 1] = L["Skipped %d slots: equipment sets are not saved"]:format(skipped.sets)
+	end
+	if skipped.petActions > 0 then
+		out[#out + 1] = L["Skipped %d slots: built-in pet bar controls not saved"]:format(skipped.petActions)
 	end
 	if skipped.items > 0 then
 		out[#out + 1] = L["Skipped %d slots: item info not cached"]:format(skipped.items)
@@ -705,7 +711,7 @@ function mod:StartSave()
 		M.Print(L["Level %d is below the minimum (10)"]:format(level))
 		return
 	end
-	local skipped = { macros = 0, items = 0, unusable = 0 }
+	local skipped = { macros = 0, sets = 0, petActions = 0, items = 0, unusable = 0 }
 	local snapshot = Snapshot(skipped)
 	local slotBar = snapshot[1]
 	local count = 0
