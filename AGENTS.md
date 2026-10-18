@@ -52,7 +52,7 @@
 - 维度规则：等级 <10 直接不参与（保存时提示退出）；10-70 级 hero 键为 0；≥71 级用当前英雄天赋树 ID（`C_ClassTalents.GetActiveHeroTalentSpec()`）。
 - **保存 = 一次性同步快照当前专精 + 当前英雄树，没有「保存所有专精」，不切专精、不碰天赋、不用任何 `C_Timer` 轮询**（`mod:StartSave()` 单函数跑完）。曾经的跨专精/跨天赋保存链因为天赋配置切换无法可靠判定完成而反复切换天赋，已整体删除，相关 API（`SetSpecialization`/`C_ClassTalents.LoadConfig`/`GetConfigIDsBySpecID`/`GetHeroTalentSpecsForClassSpec`/`TRAIT_CONFIG_UPDATED`）**一律不要再引入**；需要存别的专精就让玩家手动切过去再点保存。
 - 因此模块里**没有 `mod.busy` 状态**（保存和应用都是同步的，不会重入）。
-- **宏无法创建**（Retail 无 `CreateMacro`/`EditMacro`）：快照时遇到 `macro`/`equipmacro` 跳过并计数，面板底部与聊天框给警告；物品/技能若本角色不可用也计数（`C_Item.GetItemInfo` / `C_Spell.GetSpellInfo` 返回 nil）。恢复一律覆盖、不备份。
+- **宏按名字保存与恢复**（Retail 无 `CreateMacro`/`EditMacro`，不创建宏）：快照存 `{t="macro", id=索引, name=宏名}`（`GetMacroInfo(id)` 取名，取不到名才跳过计数）；恢复时索引仍指向同名宏则按索引 `PickupMacro`，否则按名字 `PickupMacro`（通用宏全账号存在可跨角色恢复，角色宏仅本角色存在，找不到就跳过并如实计数）。预检把「按名能找到」的宏算作可用；`equipmentset`/`equipmacro` 仍跳过计数。已核对 wiki（12.1.5）：`PickupMacro(number|string)` 为 `#nocombat` 限制 API、`GetMacroInfo(index|name)`、`GetNumMacros() → global, perChar`；**不要硬编码 1/120/121 宏索引范围**，一律走索引快路径 + 按名回退。物品/技能若本角色不可用也计数（`C_Item.GetItemInfo` / `C_Spell.GetSpellInfo` 返回 nil）。恢复一律覆盖、不备份。
 - 面板只有两个勾选框，语义不要搞混：**「启用本模块」= 全局开关**（框架的 `db.modules[key]`，由框架统一管理；禁用后连事件都不转发给模块）；**「登录后自动应用」= 角色级**（`charDb.actionbars.autoApply`，勾选=该角色参与，默认勾选）。不要再加「此角色不参与自动排列」这类反向的排除框。
 - 自动应用**只在登录**：本会话第一次 `PLAYER_ENTERING_WORLD` 延迟 2s；进本/切图不再套用。条件是「模块已启用」+ `mod:IsAutoApplyAllowed()`；不参与自动应用只影响自动套用，保存与手动「应用当前专精」照常可用。
 - 战斗中 `InCombatLockdown()` 要跳过。放置：`C_Spell.PickupSpell` / `C_Item.PickupItem` + `C_ActionBar.PutActionInSlot(slot)`（只传槽位，动作在光标上）；空槽用 `PickupAction` + `ClearCursor`；宠物条用 `PickupSpell` + `PickupPetAction(i)`（交换语义，战斗中被禁）。外部 API 一律 pcall。

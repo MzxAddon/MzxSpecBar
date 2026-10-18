@@ -314,6 +314,17 @@ local function SlotActionInfo(slot)
 	return actionType, id, subType
 end
 
+local function MacroName(macroRef)
+	if type(GetMacroInfo) ~= "function" then
+		return nil
+	end
+	local ok, name = pcall(GetMacroInfo, macroRef)
+	if ok and type(name) == "string" and name ~= "" then
+		return name
+	end
+	return nil
+end
+
 local function SpellKnown(spellID)
 	if type(C_Spell) ~= "table" or type(C_Spell.GetSpellInfo) ~= "function" then
 		return true
@@ -340,6 +351,9 @@ local function ActionAvailable(action)
 	if action.t == "item" then
 		return ItemKnown(action.id)
 	end
+	if action.t == "macro" then
+		return MacroName(action.id) == action.name or MacroName(action.name) ~= nil
+	end
 	return false
 end
 
@@ -350,6 +364,9 @@ local function SlotMatches(slot, action)
 	end
 	if action.t == "item" then
 		return actionType == "item" and id == action.id
+	end
+	if action.t == "macro" then
+		return actionType == "macro" and (id == action.id or MacroName(id) == action.name)
 	end
 	return false
 end
@@ -386,7 +403,14 @@ local function Snapshot(skipped)
 			if not ItemKnown(id) then
 				skipped.items = skipped.items + 1
 			end
-		elseif actionType == "macro" or actionType == "equipmentset" or actionType == "equipmacro" then
+		elseif actionType == "macro" then
+			local name = MacroName(id)
+			if PositiveID(id) and name then
+				slots[slot] = { t = "macro", id = id, name = name, sub = 0 }
+			else
+				skipped.macros = skipped.macros + 1
+			end
+		elseif actionType == "equipmentset" or actionType == "equipmacro" then
 			skipped.macros = skipped.macros + 1
 		end
 	end
@@ -450,6 +474,20 @@ local function PickupItemID(itemID)
 		ok = pcall(C_Item.PickupItem, itemID)
 	elseif type(PickupItem) == "function" then
 		ok = pcall(PickupItem, itemID)
+	end
+	return ok and CursorHasSomething()
+end
+
+local function PickupMacroRef(action)
+	if type(PickupMacro) ~= "function" then
+		return false
+	end
+	local ok = false
+	if MacroName(action.id) == action.name then
+		ok = pcall(PickupMacro, action.id)
+	end
+	if not ok and type(action.name) == "string" and action.name ~= "" then
+		ok = pcall(PickupMacro, action.name)
 	end
 	return ok and CursorHasSomething()
 end
@@ -537,6 +575,8 @@ function mod:ApplyLayout(layout)
 				picked = PickupSpellID(entry.action.id)
 			elseif entry.action.t == "item" then
 				picked = PickupItemID(entry.action.id)
+			elseif entry.action.t == "macro" then
+				picked = PickupMacroRef(entry.action)
 			end
 			local landed = false
 			if picked then
@@ -610,10 +650,10 @@ end
 local function SkipCountWarn(skipped)
 	local out = {}
 	if skipped.macros > 0 then
-		out[#out + 1] = L["Skipped macros cannot be restored"] .. " (" .. tostring(skipped.macros) .. ")"
+		out[#out + 1] = L["Skipped %d slots: macro, set or pet action not saved"]:format(skipped.macros)
 	end
 	if skipped.items > 0 then
-		out[#out + 1] = L["Skipped %d slots: item or macro not available"]:format(skipped.items)
+		out[#out + 1] = L["Skipped %d slots: item info not cached"]:format(skipped.items)
 	end
 	if skipped.unusable > 0 then
 		out[#out + 1] = L["Skipped %d slots: spell not available on this character"]:format(skipped.unusable)
@@ -639,6 +679,12 @@ function mod:StartSave()
 		count = count + 1
 	end
 	StoreSnapshot(ClassKey(), SpecID(), HeroTreeID(), snapshot)
+	local macroCount = 0
+	for _, action in pairs(slotBar.slots) do
+		if action.t == "macro" then
+			macroCount = macroCount + 1
+		end
+	end
 	local warnings = SkipCountWarn(skipped)
 	if #warnings > 0 then
 		self:Warn(warnings)
@@ -646,6 +692,9 @@ function mod:StartSave()
 		self.warnings = nil
 	end
 	M.Print(L["Saved %d slots"]:format(count))
+	if macroCount > 0 then
+		M.Print(L["Macro slots are restored when a macro of the same name exists"])
+	end
 	self:RefreshOptions()
 end
 
@@ -665,7 +714,7 @@ function mod:ApplyCurrent(silent)
 	end
 	local placed, petPlaced, skipped, aborted = self:ApplyLayout(layout)
 	if aborted then
-		M.Print(L["Nothing to apply: no saved spell or item is available on this character"])
+		M.Print(L["Nothing to apply: no saved spell, item or macro is available on this character"])
 		self:Warn({})
 		return
 	end
@@ -681,7 +730,7 @@ function mod:ApplyCurrent(silent)
 		end
 	end
 	if skipped > 0 then
-		self:Warn({ L["Skipped %d slots: item or macro not available"]:format(skipped) })
+		self:Warn({ L["Skipped %d slots: spell, item or macro not placed"]:format(skipped) })
 	else
 		self.warnings = nil
 		self:RefreshOptions()
