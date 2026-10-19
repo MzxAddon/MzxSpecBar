@@ -135,7 +135,7 @@ jobs:
       - name: Upload to CurseForge
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
-          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID }}
+          CF_PROJECT_ID: ${{ vars.CF_PROJECT_ID || '1752088' }}
           GV: ${{ steps.meta.outputs.game_version }}
           RELEASE_TYPE: ${{ steps.meta.outputs.release_type }}
           ZIP: ${{ steps.meta.outputs.zip }}
