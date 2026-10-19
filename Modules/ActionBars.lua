@@ -12,6 +12,7 @@ local mod = {
 M:RegisterModule(mod)
 
 M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")
+M:RegisterModuleEvent("TRAIT_CONFIG_UPDATED")
 
 local MIN_LEVEL = 10
 local HERO_TALENT_LEVEL = 71
@@ -281,6 +282,65 @@ end
 local function SpecName(specID)
 	local name = SpecInfo(specID)
 	return name
+end
+
+local function SelectedLoadoutID(specID)
+	if type(C_ClassTalents) ~= "table" or type(C_ClassTalents.GetLastSelectedSavedConfigID) ~= "function" then
+		return nil
+	end
+	local ok, id = pcall(C_ClassTalents.GetLastSelectedSavedConfigID, specID)
+	if ok and type(id) == "number" then
+		return id
+	end
+	return nil
+end
+
+local function BlizzardLoadouts(specID)
+	local list = {}
+	if type(C_ClassTalents) ~= "table" or type(C_ClassTalents.GetConfigIDsBySpecID) ~= "function" then
+		return list
+	end
+	local ok, ids = pcall(C_ClassTalents.GetConfigIDsBySpecID, specID)
+	if not ok or type(ids) ~= "table" then
+		return list
+	end
+	for i = 1, #ids do
+		local configID = ids[i]
+		local name
+		if type(C_Traits) == "table" and type(C_Traits.GetConfigInfo) == "function" then
+			local okInfo, info = pcall(C_Traits.GetConfigInfo, configID)
+			if okInfo and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+				name = info.name
+			end
+		end
+		list[#list + 1] = { id = configID, name = name }
+	end
+	return list
+end
+
+local function SpecIndexByID(specID)
+	for i = 1, NumSpecializations() do
+		local id = SpecInfoByIndex(i)
+		if id == specID then
+			return i
+		end
+	end
+	return nil
+end
+
+local function SwitchSpecialization(specID)
+	local index = SpecIndexByID(specID)
+	if index and type(C_ClassTalents) == "table" and type(C_ClassTalents.SwitchToSpecializationByIndex) == "function" then
+		local ok = pcall(C_ClassTalents.SwitchToSpecializationByIndex, index)
+		if ok then
+			return true
+		end
+	end
+	if type(SetSpecialization) == "function" then
+		local ok = pcall(SetSpecialization, specID)
+		return ok
+	end
+	return false
 end
 
 local function HeroName(heroID, specID)
@@ -1107,9 +1167,21 @@ function mod:RefreshQuickMenu()
 		if id then
 			addRow(icon, name or (L["Specialization"] .. " " .. tostring(id)), id == currentSpec, function()
 				self:HideQuickMenu()
-				if id ~= currentSpec and not pcall(SetSpecialization, id) then
+				if id ~= currentSpec and not SwitchSpecialization(id) then
 					M.Print(L["Could not switch specialization"])
 				end
+			end)
+		end
+	end
+
+	local loadouts = BlizzardLoadouts(currentSpec)
+	if #loadouts > 0 then
+		addLabel(L["Specialization configurations"])
+		local selected = SelectedLoadoutID(currentSpec)
+		for _, cfg in ipairs(loadouts) do
+			addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
+				self:HideQuickMenu()
+				self:SwitchLoadout(cfg.id)
 			end)
 		end
 	end
@@ -1146,6 +1218,30 @@ function mod:RefreshQuickMenu()
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
+end
+
+function mod:SwitchLoadout(configID)
+	if InCombatLockdown() then
+		M.Print(L["Action bars cannot be changed in combat"])
+		return
+	end
+	if type(C_ClassTalents) ~= "table" or type(C_ClassTalents.LoadConfig) ~= "function" then
+		return
+	end
+	local ok, result = pcall(C_ClassTalents.LoadConfig, configID, true)
+	if not ok then
+		M.Print(L["Could not switch configuration"])
+		return
+	end
+	if result == 2 then
+		self.pendingLoadout = true
+		return
+	end
+	if result == 0 then
+		M.Print(L["Could not switch configuration"])
+		return
+	end
+	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 end
 
 function mod:ShowQuickMenu()
@@ -1386,7 +1482,7 @@ function mod:ApplySpec(specID, heroID)
 		return
 	end
 	self.pendingSpec = { specID = specID, heroID = heroID }
-	if not pcall(SetSpecialization, specID) then
+	if not SwitchSpecialization(specID) then
 		self.pendingSpec = nil
 		M.Print(L["Could not switch specialization"])
 		return
@@ -1423,6 +1519,11 @@ function mod:OnEvent(event, ...)
 			C_Timer.After(APPLY_ON_LOGIN_DELAY, function()
 				self:ApplyCurrent(true)
 			end)
+		end
+	elseif event == "TRAIT_CONFIG_UPDATED" then
+		if self.pendingLoadout then
+			self.pendingLoadout = nil
+			self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 		end
 	end
 end
