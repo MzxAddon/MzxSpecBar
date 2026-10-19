@@ -535,13 +535,13 @@ function M.MakeModernScrollbar(scroll)
 			value = 0
 			scroll:SetVerticalScroll(value)
 		end
+		bar:Show()
+		local trackH = math.max(bar:GetHeight() or 0, 1)
+		thumb:SetShown(maxScroll > 0 and content > 0)
 		if maxScroll <= 0 or content <= 0 then
-			bar:Hide()
 			bar.offset, bar.maxOffset = 0, 0
 			return
 		end
-		bar:Show()
-		local trackH = math.max(bar:GetHeight() or 0, 1)
 		local thumbH = math.min(math.max(math.floor(trackH * (view / content)), 24), trackH)
 		thumb:SetHeight(thumbH)
 		local maxOffset = math.max(trackH - thumbH, 0)
