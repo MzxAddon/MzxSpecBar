@@ -40,6 +40,7 @@
   - **`M.MakeListRow(parent, opts)`**（`M.LIST_ROW_HEIGHT = 40`；opts: `height, iconSize=22, stripe, singleLine, onClick`；`row.icon/name/sub/state`；`row:SetSelected(on)` 金色调 + 2px 金色左强调条；`row:SetStripe(on)`）——**两行文字的行内间距要统一**：第一行 `name` 距顶 -6、第二行 `sub` 距顶 -22（行高 40 时上下留白对称、行距 16px），图标 22×22 垂直居中；不要出现"上边距和下边距不一样"的排版。
   - `M.SetStateIcon(row, on, texPath, size)`：列表右侧状态图标，替代状态文字（首次调用会隐藏 `row.state`）
   - `M.MakeModernScrollbar(scroll)`：**现代自绘滚动条**（3px 暗轨道 + 7px 亮滑块、无上下箭头、可拖拽、滚轮翻页，悬停/拖动时提亮）。**禁止再用 `UIPanelScrollFrameTemplate`**——默认滚动条和扁平深色风格不搭（而且旧样式带箭头小方块，很丑）。用法：`scroll = CreateFrame("ScrollFrame", nil, parent)`（不带模板）→ `p.scrollbar = M.MakeModernScrollbar(scroll)`；**列表内容高度变化后必须调 `p.scrollbar:Update()`**（滑块长度/位置/显隐都靠它重算，内容不足一屏时滑块自动隐藏）。
+  - ⚠️ **Texture / FontString / Region 不能挂脚本**：`SetScript` 只在 Frame 系（Frame/Button/CheckButton/ScrollFrame）上有意义，给 Texture 挂 `OnMouseEnter`/`OnDragStart` 会直接抛 `bad argument #2 to SetScript`，**抛错会中断整个 `BuildOptions`** → 面板半残（列表空、控件错位）。**需要交互的部件一律 `CreateFrame("Frame")` + 内嵌纹理**（如滚动条滑块）。另外：**面板里"可能出错"的自定义部件要放在最后创建**（滚动条放在 `SetScrollChild` 之后），避免它一崩就把整个面板带走。
 - 小地图按钮（`M:CreateMinimapButton`）：31×31，父级 `Minimap`，`MEDIUM`/level 8，可拖动（拖动时用 `OnUpdate` 贴边，位置存 `db.minimapPos` 角度），左键开关设置窗，悬停显示提示。**右键 = 快速列表**（`RegisterForClicks("LeftButtonUp", "RightButtonUp")`，`OnClick` 按 `button` 分派；具体内容由模块通过 `M:SetMinimapContextHandler(fn, hideFn)` 注册，没注册时右键无反应）。
 - 斜杠：`/msb` 空参数开关设置窗；`help`、`list`、`on <key>`、`off <key>`。`M:Slash(input)` 处理。
 - 事件转发需要框架本身注册事件：`M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")` 之类。
