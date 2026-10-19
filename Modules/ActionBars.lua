@@ -1082,7 +1082,7 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 end
 
 local QUICK_MENU_MIN_WIDTH = 236
-local QUICK_MENU_MAX_WIDTH = 340
+local QUICK_MENU_MAX_WIDTH = 420
 local QUICK_MENU_HEIGHT = 420
 local QUICK_MENU_PAD = 22
 local QUICK_SPEC_TEXT_LEFT = 38
@@ -1155,7 +1155,6 @@ function mod:RefreshQuickMenu()
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
-	local rowWidth = math.max(rows:GetWidth() or 0, QUICK_MENU_MIN_WIDTH)
 	local rowIndex = 0
 	local y = 0
 
@@ -1186,7 +1185,7 @@ function mod:RefreshQuickMenu()
 		end
 		row.name:ClearAllPoints()
 		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
-		M.Ellipsize(row.name, name or "", rowWidth - textLeft - 10)
+		row.name:SetText(name or "")
 		if opts.dim then
 			row.name:SetTextColor(0.80, 0.80, 0.86)
 		else
@@ -1450,10 +1449,9 @@ function mod:RefreshOptions()
 		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
 		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
 		row.icon:SetTexture(icon or nil)
-		local maxWidth = (rows:GetWidth() or 0) - 48
-		M.Ellipsize(row.name, name or "", maxWidth)
+		row.name:SetText(name or "")
 		if row.sub then
-			M.Ellipsize(row.sub, sub or "", maxWidth)
+			row.sub:SetText(sub or "")
 		end
 		row:SetSelected(selected and true or false)
 		row:SetStripe(used % 2 == 0)

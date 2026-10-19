@@ -334,50 +334,6 @@ function M.MakeCloseButton(parent)
 	return btn
 end
 
-local function TakeChars(s, n)
-	local i, count = 1, 0
-	local len = #s
-	while i <= len do
-		count = count + 1
-		if count > n then
-			return s:sub(1, i - 1)
-		end
-		local b = s:byte(i)
-		if b < 0x80 then
-			i = i + 1
-		elseif b < 0xE0 then
-			i = i + 2
-		elseif b < 0xF0 then
-			i = i + 3
-		else
-			i = i + 4
-		end
-	end
-	return s
-end
-
-function M.Ellipsize(fs, text, maxWidth)
-	if not text or text == "" or type(fs.SetText) ~= "function" then
-		return text
-	end
-	fs:SetText(text)
-	if not maxWidth or maxWidth < 24 or (fs:GetStringWidth() or 0) <= maxWidth then
-		return text
-	end
-	local full = math.max(fs:GetStringWidth() or 1, 1)
-	local n = math.max(math.floor(strlen(text) * maxWidth / full) - 1, 1)
-	while n > 0 do
-		local cut = TakeChars(text, n) .. "..."
-		fs:SetText(cut)
-		if (fs:GetStringWidth() or 0) <= maxWidth then
-			return cut
-		end
-		n = n - 1
-	end
-	fs:SetText("...")
-	return "..."
-end
-
 local MOUSE_L = "|TInterface\\AddOns\\MzxSpecBar\\Textures\\mouse-left.tga:12:9|t "
 local MOUSE_R = "|TInterface\\AddOns\\MzxSpecBar\\Textures\\mouse-right.tga:12:9|t "
 
