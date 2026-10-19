@@ -29,7 +29,7 @@
 - 小地图按钮必须照抄 MzxRiding / LibDBIcon 的标准写法，不搞个性化（那套是实机验证过的）：`border` 用 **FileID `136430`**（MiniMap-TrackingBorder，OVERLAY 层）且 **`SetSize(50, 50)` + `SetPoint("TOPLEFT", 0, 0)`**——贴图必须画到 50px 才能让圆环对上 31px 按钮，按 31px 画会被裁成方块；纯色兜底**只放 12×12 居中**（`SetAllPoints` 铺满会露出方框）；悬停一律 `b:SetHighlightTexture(136477)` 走标准圆形光晕，**不要换贴图、不要靠 SetVertexColor 造效果**。
 - **任何子控件都不得越出窗口边界**（越界就会压到别的插件上，是禁忌）：标签页宽度按 `f:GetWidth()` 算而不是常量 `GUI_WIDTH`，并挂 `OnSizeChanged` 实时重算；滚动列表裁剪用 `pcall(scroll.SetClippingEnabled, scroll, true)`（`SetClippingEnabled` 不是通用 Frame 方法，不能裸调）。
 - **面板元素纵向排布必须留足间距、任何元素不得越界压到别的元素上**：警告文字固定占底部 66px 条带（滚动区 `BOTTOMRIGHT -18, 66` 让开），条带内最多 3 行去重后的提示（`WARN_MAX_LINES`，超出显示「…另有 N 条提示」），字体串限宽 + `SetNonSpaceWrap(true)` 不允许横向溢出——早期版本警告字体串锚 `BOTTOMLEFT` 无上限生长，直接盖住整个面板，是要避免的重犯错误。
-- **按钮宽度必须按文字实测宽度自适应**：`FontString` 不会裁剪，固定宽度按钮放长文案会直接压到右边控件上（早期 138px 的「Save current specialization」在英文下就出格，德/法语更长）。做法：`FontString:GetStringWidth()` + 上下内边距算宽（`BUTTON_TEXT_PAD`），超出色带宽度（`p:GetWidth() - 24`）自动换行；**字体未加载导致宽度为 0 时退化为整行宽**（宁可占满也不出格）。`ActionBars` 的按钮行用 `LayoutPanel(p)` 统一排布，**下方状态行/列表标题/滚动区都跟随按钮底边**（`bottom - 30 / - 64 / - 86`），按钮行数随语言变化时列表不会被压住。
+- **按钮一律整行等宽、纵向堆叠**：`FontString` 不会裁剪，固定窄按钮放长文案会直接压到右边控件上（早期 138px 的「Save current specialization」在英文下就出格，德/法语更长）。做法：按钮宽度取**内容宽**（`p:GetWidth() - 24`，与提示/状态行/列表标题左右对齐），每个按钮**独占一行**、行距 30px（26 高 + 4 间隙）。**不要做按文字测宽的自适应排版**——三个按钮宽窄不一既不好看也不省性能。`ActionBars` 面板纵向节奏：勾选框 -2 / 提示 -30 / 自动应用勾选 -52 / 三个按钮 -86、-116、-146 / 状态行 -186 / 列表标题 -220 / 滚动区 -242（底 66 让给警告条带）。
 - 共享 UI 助手（**新 UI 一律复用这些，禁止手搓**）：
   - `M.MakeFlatSkin(frame, thickness)`、`M.SnapToPixelGrid(frame)`（`OnShow` + `OnDragStop` 处理半像素缺线）
   - `M.MakeFlatButton(parent, w, h, text, onClick)`、`M.SetButtonIcon(b, texPath, size)`（无文字图标按钮）

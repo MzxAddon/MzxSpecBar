@@ -1008,58 +1008,6 @@ function mod:DeleteCurrentClass()
 	self:RefreshOptions()
 end
 
-local BUTTON_MIN_WIDTH = 138
-local BUTTON_HEIGHT = 26
-local BUTTON_ROW_GAP = 4
-local BUTTON_GAP = 6
-local BUTTON_TEXT_PAD = 24
-
-local function LayoutPanel(p)
-	if not p or not p.buttons then
-		return
-	end
-	local contentWidth = (p:GetWidth() or 444) - 24
-	local x, y = 12, -86
-	for i = 1, #p.buttons do
-		local b = p.buttons[i]
-		local fs = b:GetFontString()
-		local textWidth = 0
-		if fs then
-			textWidth = fs:GetStringWidth() or 0
-		end
-		local width
-		if textWidth > 0 then
-			width = math.max(BUTTON_MIN_WIDTH, textWidth + BUTTON_TEXT_PAD)
-		else
-			width = contentWidth
-		end
-		width = math.min(width, contentWidth)
-		b:SetWidth(width)
-		if x > 12 and x + width > 12 + contentWidth then
-			x = 12
-			y = y - (BUTTON_HEIGHT + BUTTON_ROW_GAP)
-		end
-		b:ClearAllPoints()
-		b:SetPoint("TOPLEFT", p, "TOPLEFT", x, y)
-		x = x + width + BUTTON_GAP
-	end
-	local bottom = y - BUTTON_HEIGHT
-	if p.status then
-		p.status:ClearAllPoints()
-		p.status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, bottom - 30)
-		p.status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, 0)
-	end
-	if p.listLabel then
-		p.listLabel:ClearAllPoints()
-		p.listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, bottom - 64)
-	end
-	if p.scroll then
-		p.scroll:ClearAllPoints()
-		p.scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 4, bottom - 86)
-		p.scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -18, 66)
-	end
-end
-
 function mod:BuildOptions(p)
 	local hint = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -30)
@@ -1076,22 +1024,25 @@ function mod:BuildOptions(p)
 	auto:SetChecked(self:IsAutoApplyAllowed())
 	p.autoApply = auto
 
-	local saveOne = M.MakeFlatButton(p, BUTTON_MIN_WIDTH, BUTTON_HEIGHT, L["Save current specialization"], function()
+	local buttonWidth = (p:GetWidth() or 444) - 24
+
+	local saveOne = M.MakeFlatButton(p, buttonWidth, 26, L["Save current specialization"], function()
 		self:StartSave()
 	end)
+	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
 
-	local apply = M.MakeFlatButton(p, BUTTON_MIN_WIDTH, BUTTON_HEIGHT, L["Apply current specialization"], function()
+	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
 	end)
+	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
 
-	local del = M.MakeFlatButton(p, BUTTON_MIN_WIDTH, BUTTON_HEIGHT, L["Delete saved data"], function()
+	local del = M.MakeFlatButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
-
-	p.buttons = { saveOne, apply, del }
+	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -158)
+	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -186)
 	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
@@ -1099,11 +1050,11 @@ function mod:BuildOptions(p)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -192)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -220)
 	p.listLabel = listLabel
 
 	local scroll = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 4, -214)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 4, -242)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -18, 66)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
@@ -1112,8 +1063,6 @@ function mod:BuildOptions(p)
 	rows:SetSize(1, 1)
 	scroll:SetScrollChild(rows)
 	p.rows = rows
-
-	LayoutPanel(p)
 end
 
 function mod:RefreshOptions()
@@ -1121,7 +1070,6 @@ function mod:RefreshOptions()
 	if not p then
 		return
 	end
-	LayoutPanel(p)
 	if p.autoApply then
 		p.autoApply:SetChecked(self:IsAutoApplyAllowed())
 	end
