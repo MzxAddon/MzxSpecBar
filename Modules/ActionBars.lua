@@ -1081,6 +1081,7 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 end
 
 local QUICK_MENU_WIDTH = 236
+local QUICK_MENU_HEIGHT = 420
 local QUICK_ROW_HEIGHT = 28
 local QUICK_CONFIG_ROW_HEIGHT = 26
 
@@ -1091,7 +1092,7 @@ function mod:GetQuickMenu()
 	local f = CreateFrame("Frame", "MzxSpecBarQuickMenu", UIParent)
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetFrameLevel(9000)
-	f:SetSize(QUICK_MENU_WIDTH, 120)
+	f:SetSize(QUICK_MENU_WIDTH, QUICK_MENU_HEIGHT)
 	local setColors = M.MakeFlatSkin(f, 1)
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
@@ -1177,9 +1178,7 @@ function mod:RefreshQuickMenu()
 	for i = rowIndex + 1, #rows.rowPool do
 		rows.rowPool[i]:Hide()
 	end
-	local viewH = math.min(math.max(y, 1), math.max((UIParent:GetHeight() or 800) - 100, 160) - 34)
 	rows:SetHeight(math.max(y, 1))
-	f:SetHeight(26 + viewH + 8)
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
@@ -1247,8 +1246,7 @@ function mod:ShowQuickMenu()
 	if button then
 		local cx, cy = button:GetCenter()
 		local uiWidth = UIParent:GetWidth() or 1920
-		local menuH = f:GetHeight() or 160
-		local openDown = not (cy and cy < menuH + 40)
+		local openDown = not (cy and cy < QUICK_MENU_HEIGHT + 40)
 		local anchor = Minimap or button
 		f:ClearAllPoints()
 		if cx and cx < uiWidth / 2 then
