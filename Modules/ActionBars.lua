@@ -1081,10 +1081,24 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 	end
 end
 
-local QUICK_MENU_WIDTH = 236
+local QUICK_MENU_MIN_WIDTH = 236
+local QUICK_MENU_MAX_WIDTH = 340
 local QUICK_MENU_HEIGHT = 420
+local QUICK_MENU_PAD = 22
+local QUICK_SPEC_TEXT_LEFT = 38
+local QUICK_CONFIG_TEXT_LEFT = 26
 local QUICK_ROW_HEIGHT = 28
 local QUICK_CONFIG_ROW_HEIGHT = 26
+
+local measureFs
+
+local function MeasureText(text)
+	if not measureFs then
+		measureFs = UIParent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+	end
+	measureFs:SetText(text or "")
+	return measureFs:GetStringWidth() or 0
+end
 
 function mod:GetQuickMenu()
 	if self.quickMenu then
@@ -1093,7 +1107,7 @@ function mod:GetQuickMenu()
 	local f = CreateFrame("Frame", "MzxSpecBarQuickMenu", UIParent)
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetFrameLevel(9000)
-	f:SetSize(QUICK_MENU_WIDTH, QUICK_MENU_HEIGHT)
+	f:SetSize(QUICK_MENU_MIN_WIDTH, QUICK_MENU_HEIGHT)
 	local setColors = M.MakeFlatSkin(f, 1)
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
@@ -1120,12 +1134,30 @@ function mod:RefreshQuickMenu()
 	local f = self:GetQuickMenu()
 	local rows = f.rows
 	rows.rowPool = rows.rowPool or {}
+
+	local entries = {}
+	local maxText = 0
+	for i = 1, NumSpecializations() do
+		local id, name, icon = SpecInfoByIndex(i)
+		if id then
+			local label = name or (L["Specialization"] .. " " .. tostring(id))
+			entries[#entries + 1] = { spec = true, id = id, name = label, icon = icon }
+			maxText = math.max(maxText, MeasureText(label) + QUICK_SPEC_TEXT_LEFT)
+			for _, cfg in ipairs(BlizzardLoadouts(id)) do
+				local label2 = cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id))
+				entries[#entries + 1] = { id = id, configID = cfg.id, name = label2 }
+				maxText = math.max(maxText, MeasureText(label2) + QUICK_CONFIG_TEXT_LEFT)
+			end
+		end
+	end
+
+	f:SetWidth(math.min(math.max(maxText + QUICK_MENU_PAD, QUICK_MENU_MIN_WIDTH), QUICK_MENU_MAX_WIDTH))
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
+	local rowWidth = math.max(rows:GetWidth() or 0, QUICK_MENU_MIN_WIDTH)
 	local rowIndex = 0
 	local y = 0
-	local rowWidth = rows:GetWidth() or 0
 
 	local function addRow(icon, name, selected, onClick, opts)
 		opts = opts or {}
@@ -1168,23 +1200,24 @@ function mod:RefreshQuickMenu()
 	end
 
 	local currentSpec = SpecID()
-	for i = 1, NumSpecializations() do
-		local id, name, icon = SpecInfoByIndex(i)
-		if id then
-			addRow(icon, name or (L["Specialization"] .. " " .. tostring(id)), id == currentSpec, function()
+	local lastSpec
+	for _, e in ipairs(entries) do
+		if e.spec then
+			if lastSpec ~= nil then
+				y = y + 7
+			end
+			lastSpec = e.id
+			addRow(e.icon, e.name, e.id == currentSpec, function()
 				self:HideQuickMenu()
-				if id ~= currentSpec and not SwitchSpecialization(id) then
+				if e.id ~= currentSpec and not SwitchSpecialization(e.id) then
 					M.Print(L["Could not switch specialization"])
 				end
-			end, { height = QUICK_ROW_HEIGHT, gapAfter = 2 })
-			local selected = SelectedLoadoutID(id)
-			for _, cfg in ipairs(BlizzardLoadouts(id)) do
-				addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
-					self:HideQuickMenu()
-					self:SwitchLoadout(id, cfg.id)
-				end, { height = QUICK_CONFIG_ROW_HEIGHT, textLeft = 26, dim = true, gapAfter = 1 })
-			end
-			y = y + 7
+			end, { height = QUICK_ROW_HEIGHT, textLeft = QUICK_SPEC_TEXT_LEFT, gapAfter = 2 })
+		else
+			addRow(nil, e.name, e.configID == SelectedLoadoutID(e.id), function()
+				self:HideQuickMenu()
+				self:SwitchLoadout(e.id, e.configID)
+			end, { height = QUICK_CONFIG_ROW_HEIGHT, textLeft = QUICK_CONFIG_TEXT_LEFT, dim = true, gapAfter = 1 })
 		end
 	end
 

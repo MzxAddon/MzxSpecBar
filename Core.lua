@@ -361,7 +361,7 @@ function M.Ellipsize(fs, text, maxWidth)
 		return text
 	end
 	fs:SetText(text)
-	if not maxWidth or maxWidth <= 0 or (fs:GetStringWidth() or 0) <= maxWidth then
+	if not maxWidth or maxWidth < 24 or (fs:GetStringWidth() or 0) <= maxWidth then
 		return text
 	end
 	local full = math.max(fs:GetStringWidth() or 1, 1)
