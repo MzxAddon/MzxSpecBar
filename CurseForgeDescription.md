@@ -12,6 +12,7 @@ MzxSpecBar is a small, self-contained addon for World of Warcraft Retail (Midnig
 - **Honest, itemized reports.** Every restore tells you exactly how many slots were applied and why the remaining ones were skipped: unavailable spell, unavailable item, macro not placed, or a placement that failed verification. The chat frame lists each skipped slot with its slot number, action name, type and id.
 - **Optional auto-apply on login.** Per character, you can let MzxSpecBar restore your layout automatically a moment after you log in. Characters that opt out keep their manual-only behaviour.
 - **Talent switcher on the minimap.** Right-click the minimap button to open Blizzard's own specialization list: every talent tree, with the specialization configurations Blizzard keeps for it underneath. Picking a configuration switches to that tree, loads that configuration and then arranges your action bars. The names and the list are Blizzard's own, nothing is invented by the addon.
+- **Applying a saved layout switches specialization first.** Clicking a saved layout switches to the specialization it belongs to and only then arranges the bars, instead of asking you to switch by hand.
 - **Verifies before it touches anything.** If none of the saved actions are available on the current character, MzxSpecBar gives up instead of clearing your bars. The pre-flight check runs before a single slot is touched.
 - **Minimal, consistent UI.** A small minimap button and a flat, dark options window that look the same as the other Mzx addons.
 
