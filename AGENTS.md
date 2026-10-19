@@ -45,6 +45,8 @@
     - `Update()` 每次都会把滚动值夹到 `[0, maxScroll]`：滑块位置由**夹过的值**算，滑块永远不会飞出轨道；内容装得下时 `bar:Hide()` 且滚动值归零。
     - 滚轮/拖拽处理器里**先 `update()` 再读 `bar.maxScroll`/`bar.offset`**（这些值随时可能被刷新改动）；另外 `HookScript("OnSizeChanged", update)` 兜住几何变化。
     - **右键菜单尺寸是常量**：`QUICK_MENU_WIDTH = 236` / `QUICK_MENU_HEIGHT = 420`，**永远不按内容或屏幕高度动态调整**。行数不够菜单下面留白，行数多了在固定窗口里滚动。**轻量插件不要做"每次打开按屏幕尺寸重算布局"这种动态几何**——它既没有性能收益，又让菜单每次打开都在跳。定位方向判断用常量 `QUICK_MENU_HEIGHT` 即可。
+  - **菜单里不写任何标题/说明文字**：顶部不留标题条（滚动区直接从 `-6` 开始），省掉一行没信息量的字。
+  - **行左边距要小**：滚动区 `TOPLEFT 6 / BOTTOMRIGHT -4`（滑块离右边框只剩 4px）；专精行文字起点 38（图标 22 + 8 内边距），**配置行文字起点 26**——层级靠"比父行文字靠左一点"体现，**不要靠整行缩进 18px**，那会让左边空一大块。`MakeListRow` 的 `textLeft` 可覆盖，池化复用时要在 `addRow` 里重新锚定（`row.name:ClearAllPoints()` + `SetPoint`），否则新建行和复用行的文字位置会不一样。
     - 列表滚动必须**按行数线性缩放**：滑块高 = `clamp(轨道高 × 可视高/内容高, 24, 轨道高)`（行数上百时自动变短，但永不短于 24px、绝不长过轨道）；滚轮步长 = `max(可视高 × 0.2, 24)`（不能写死 40px，配置一多就变成"一格一行的爬行"）。
   - **面板左右边距统一 12px**：列表的 scroll `TOPLEFT 12 / BOTTOMRIGHT -12`，滚动条右边缘因此与上方整行按钮右边缘对齐；**不要再用 4/-18 这类错位值**，那会造成右边空一大块且参差不齐。
   - ⚠️ **Texture / FontString / Region 不能挂脚本**：`SetScript` 只在 Frame 系（Frame/Button/CheckButton/ScrollFrame）上有意义，给 Texture 挂 `OnMouseEnter`/`OnDragStart` 会直接抛 `bad argument #2 to SetScript`，**抛错会中断整个 `BuildOptions`** → 面板半残（列表空、控件错位）。**需要交互的部件一律 `CreateFrame("Frame")` + 内嵌纹理**（如滚动条滑块）。另外：**面板里"可能出错"的自定义部件要放在最后创建**（滚动条放在 `SetScrollChild` 之后），避免它一崩就把整个面板带走。

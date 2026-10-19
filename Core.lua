@@ -426,7 +426,7 @@ function M.MakeListRow(parent, opts)
 	icon:SetPoint("LEFT", 8, 0)
 	row.icon = icon
 
-	local textLeft = (opts.iconSize or 22) + 16
+	local textLeft = opts.textLeft or ((opts.iconSize or 22) + 16)
 	local name = row:CreateFontString(nil, "ARTWORK", "GameFontNormal")
 	name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
 	name:SetJustifyH("LEFT")

@@ -1097,12 +1097,9 @@ function mod:GetQuickMenu()
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
 
-	local title = M.MakeSectionLabel(f, L["Specialization configurations"])
-	title:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -8)
-
 	local scroll = CreateFrame("ScrollFrame", nil, f)
-	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -26)
-	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
+	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 6, -6)
+	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -4, 6)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 
 	local rows = CreateFrame("Frame", nil, scroll)
@@ -1129,18 +1126,20 @@ function mod:RefreshQuickMenu()
 	local function addRow(icon, name, selected, onClick, opts)
 		opts = opts or {}
 		local height = opts.height or QUICK_ROW_HEIGHT
-		local indent = opts.indent and 18 or 0
+		local textLeft = opts.textLeft or 38
 		rowIndex = rowIndex + 1
 		local row = rows.rowPool[rowIndex]
 		if not row then
-			row = M.MakeListRow(rows, { height = height, singleLine = true })
+			row = M.MakeListRow(rows, { height = height, singleLine = true, textLeft = textLeft })
 			rows.rowPool[rowIndex] = row
 		end
 		row:SetHeight(height)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", indent, -y)
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -y)
 		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -y)
 		row.icon:SetTexture(icon or nil)
+		row.name:ClearAllPoints()
+		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
 		row.name:SetText(name or "")
 		if opts.dim then
 			row.name:SetTextColor(0.80, 0.80, 0.86)
@@ -1169,7 +1168,7 @@ function mod:RefreshQuickMenu()
 				addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
 					self:HideQuickMenu()
 					self:SwitchLoadout(id, cfg.id)
-				end, { height = QUICK_CONFIG_ROW_HEIGHT, indent = true, dim = true, gapAfter = 1 })
+				end, { height = QUICK_CONFIG_ROW_HEIGHT, textLeft = 26, dim = true, gapAfter = 1 })
 			end
 			y = y + 7
 		end
