@@ -534,10 +534,10 @@ function M.MakeModernScrollbar(scroll)
 		bar.offset, bar.maxOffset, bar.maxScroll = offset, maxOffset, maxScroll
 	end
 
-	thumb:SetScript("OnMouseEnter", function()
+	thumb:SetScript("OnEnter", function()
 		thumbTex:SetColorTexture(0.95, 0.95, 1, 0.90)
 	end)
-	thumb:SetScript("OnMouseLeave", function()
+	thumb:SetScript("OnLeave", function()
 		if not thumb.dragging then
 			thumbTex:SetColorTexture(0.75, 0.75, 0.80, 0.55)
 		end
