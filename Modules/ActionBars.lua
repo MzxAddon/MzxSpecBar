@@ -1080,7 +1080,7 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 	end
 end
 
-local QUICK_MENU_WIDTH = 250
+local QUICK_MENU_WIDTH = 236
 local QUICK_ROW_HEIGHT = 28
 local QUICK_CONFIG_ROW_HEIGHT = 26
 
@@ -1097,11 +1097,11 @@ function mod:GetQuickMenu()
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
 
 	local title = M.MakeSectionLabel(f, L["Specialization configurations"])
-	title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
+	title:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -8)
 
 	local scroll = CreateFrame("ScrollFrame", nil, f)
 	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -26)
-	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
+	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -8, 8)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 
 	local rows = CreateFrame("Frame", nil, scroll)

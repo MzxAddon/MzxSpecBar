@@ -485,8 +485,8 @@ function M.MakeSectionLabel(parent, text)
 end
 
 -- 现代扁平滚动条：细轨道 + 无箭头可拖拽滑块 + 滚轮（自绘，不套 UIPanelScrollFrameTemplate）
-local SCROLLBAR_WIDTH = 10
-local SCROLLBAR_GUTTER = 16
+local SCROLLBAR_WIDTH = 6
+local SCROLLBAR_GUTTER = 10
 
 function M.MakeModernScrollbar(scroll)
 	if type(scroll) ~= "table" or type(scroll.GetVerticalScroll) ~= "function" then
@@ -502,10 +502,10 @@ function M.MakeModernScrollbar(scroll)
 	track:SetColorTexture(0, 0, 0, 0.30)
 	track:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
 	track:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
-	track:SetWidth(3)
+	track:SetWidth(2)
 
 	local thumb = CreateFrame("Frame", nil, bar)
-	thumb:SetWidth(6)
+	thumb:SetWidth(4)
 	thumb:SetHeight(40)
 
 	local thumbTex = thumb:CreateTexture(nil, "ARTWORK")
@@ -542,7 +542,7 @@ function M.MakeModernScrollbar(scroll)
 		end
 		bar:Show()
 		local trackH = math.max(bar:GetHeight() or 0, 1)
-		local thumbH = math.max(math.floor(trackH * (view / content)), 28)
+		local thumbH = math.min(math.max(math.floor(trackH * (view / content)), 24), trackH)
 		thumb:SetHeight(thumbH)
 		local maxOffset = math.max(trackH - thumbH, 0)
 		local offset = 0
@@ -591,7 +591,7 @@ function M.MakeModernScrollbar(scroll)
 	scroll:SetScript("OnMouseWheel", function(self, delta)
 		update()
 		local maxScroll = bar.maxScroll or 0
-		local step = 40
+		local step = math.max(math.floor((scroll:GetHeight() or 0) * 0.2), 24)
 		local value = math.max(0, math.min((self:GetVerticalScroll() or 0) - delta * step, maxScroll))
 		self:SetVerticalScroll(value)
 		update()

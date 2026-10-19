@@ -40,11 +40,12 @@
   - **`M.MakeListRow(parent, opts)`**（`M.LIST_ROW_HEIGHT = 40`；opts: `height, iconSize=22, stripe, singleLine, onClick`；`row.icon/name/sub/state`；`row:SetSelected(on)` 金色调 + 2px 金色左强调条；`row:SetStripe(on)`）——**两行文字的行内间距要统一**：第一行 `name` 距顶 -6、第二行 `sub` 距顶 -22（行高 40 时上下留白对称、行距 16px），图标 22×22 垂直居中；不要出现"上边距和下边距不一样"的排版。
   - `M.SetStateIcon(row, on, texPath, size)`：列表右侧状态图标，替代状态文字（首次调用会隐藏 `row.state`）
   - `M.MakeModernScrollbar(scroll)`：**现代自绘滚动条**（3px 暗轨道 + 6px 亮滑块、无上下箭头、可拖拽、滚轮翻页，悬停/拖动时提亮）。**禁止再用 `UIPanelScrollFrameTemplate`**。用法：`scroll = CreateFrame("ScrollFrame", nil, parent)`（不带模板）→ `p.scrollbar = M.MakeModernScrollbar(scroll)`；**列表内容高度变化后必须调 `p.scrollbar:Update()`**。要点（都是踩过坑的）：
-    - **滚动条自己接管内容宽度**：`SCROLLBAR_GUTTER = 16`（滑块 10 + 留白 6），`Update()` 把 scroll child 宽度设成 `scroll:GetWidth() - 16`，**调用方不许再 `SetWidth` 内容帧**。
+    - **滚动条自己接管内容宽度**：`SCROLLBAR_WIDTH = 6` / `SCROLLBAR_GUTTER = 10`（滑块 6 + 留白 4；轨道 2px、滑块 4px），`Update()` 把 scroll child 宽度设成 `scroll:GetWidth() - 10`，**调用方不许再 `SetWidth` 内容帧**。**滑块就该是细条（≤6px），右侧留白总共不超过 16px——空白越宽越像没做完**。
     - **行不许 `SetWidth`，改用双锚点拉伸**：`row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, y)` + `row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, y)`，行宽就永远等于内容框宽——手算宽度会因为刷新时序算出 0/旧值，导致点击区只剩左边一小块。缩进只加在左边锚点（`TOPLEFT, 18`），右边锚点保持 0。
     - `Update()` 每次都会把滚动值夹到 `[0, maxScroll]`：滑块位置由**夹过的值**算，滑块永远不会飞出轨道；内容装得下时 `bar:Hide()` 且滚动值归零。
     - 滚轮/拖拽处理器里**先 `update()` 再读 `bar.maxScroll`/`bar.offset`**（这些值随时可能被刷新改动）；另外 `HookScript("OnSizeChanged", update)` 兜住几何变化。
     - 弹层类列表（右键菜单）**可视高度要按屏幕高度夹住**（`viewH = min(内容高, 屏幕高 - 100 - 34)`，内容高度照实设），否则菜单高过屏幕会被切掉一截、滚动条也就没意义。
+    - **必须按行数线性缩放**：滑块高 = `clamp(轨道高 × 可视高/内容高, 24, 轨道高)`（行数上百时自动变短，但永不短于 24px、绝不长过轨道）；滚轮步长 = `max(可视高 × 0.2, 24)`（不能写死 40px，配置一多就变成"一格一行的爬行"）。
   - **面板左右边距统一 12px**：列表的 scroll `TOPLEFT 12 / BOTTOMRIGHT -12`，滚动条右边缘因此与上方整行按钮右边缘对齐；**不要再用 4/-18 这类错位值**，那会造成右边空一大块且参差不齐。
   - ⚠️ **Texture / FontString / Region 不能挂脚本**：`SetScript` 只在 Frame 系（Frame/Button/CheckButton/ScrollFrame）上有意义，给 Texture 挂 `OnMouseEnter`/`OnDragStart` 会直接抛 `bad argument #2 to SetScript`，**抛错会中断整个 `BuildOptions`** → 面板半残（列表空、控件错位）。**需要交互的部件一律 `CreateFrame("Frame")` + 内嵌纹理**（如滚动条滑块）。另外：**面板里"可能出错"的自定义部件要放在最后创建**（滚动条放在 `SetScrollChild` 之后），避免它一崩就把整个面板带走。
 - 小地图按钮（`M:CreateMinimapButton`）：31×31，父级 `Minimap`，`MEDIUM`/level 8，可拖动（拖动时用 `OnUpdate` 贴边，位置存 `db.minimapPos` 角度），左键开关设置窗，悬停显示提示。**右键 = 快速列表**（`RegisterForClicks("LeftButtonUp", "RightButtonUp")`，`OnClick` 按 `button` 分派；具体内容由模块通过 `M:SetMinimapContextHandler(fn, hideFn)` 注册，没注册时右键无反应）。
