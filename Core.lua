@@ -485,8 +485,8 @@ function M.MakeSectionLabel(parent, text)
 end
 
 -- 现代扁平滚动条：细轨道 + 无箭头可拖拽滑块 + 滚轮（自绘，不套 UIPanelScrollFrameTemplate）
-local SCROLLBAR_WIDTH = 12
-local SCROLLBAR_GUTTER = 20
+local SCROLLBAR_WIDTH = 10
+local SCROLLBAR_GUTTER = 16
 
 function M.MakeModernScrollbar(scroll)
 	if type(scroll) ~= "table" or type(scroll.GetVerticalScroll) ~= "function" then
@@ -500,47 +500,57 @@ function M.MakeModernScrollbar(scroll)
 
 	local track = bar:CreateTexture(nil, "BACKGROUND")
 	track:SetColorTexture(0, 0, 0, 0.30)
-	track:SetPoint("TOP", bar, "TOP", -4, 0)
-	track:SetPoint("BOTTOM", bar, "BOTTOM", -4, 0)
+	track:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+	track:SetPoint("BOTTOMLEFT", bar, "BOTTOMLEFT", 0, 0)
 	track:SetWidth(3)
 
 	local thumb = CreateFrame("Frame", nil, bar)
-	thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
-	thumb:SetWidth(7)
+	thumb:SetWidth(6)
 	thumb:SetHeight(40)
 
 	local thumbTex = thumb:CreateTexture(nil, "ARTWORK")
 	thumbTex:SetAllPoints()
 	thumbTex:SetColorTexture(0.75, 0.75, 0.80, 0.55)
 
+	local function place()
+		local offset = bar.offset or 0
+		thumb:ClearAllPoints()
+		thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -offset)
+	end
+
 	local function update()
 		local child = scroll:GetScrollChild()
-		local view = scroll:GetHeight() or 1
+		local view = math.max(scroll:GetHeight() or 0, 1)
 		local content = (child and child:GetHeight()) or 0
 		if child then
 			child:SetWidth(math.max((scroll:GetWidth() or 0) - SCROLLBAR_GUTTER, 40))
 		end
 		local maxScroll = math.max(content - view, 0)
-		local trackH = bar:GetHeight() or 1
+		bar.maxScroll = maxScroll
+		local value = scroll:GetVerticalScroll() or 0
+		if value > maxScroll then
+			value = maxScroll
+			scroll:SetVerticalScroll(value)
+		elseif value < 0 then
+			value = 0
+			scroll:SetVerticalScroll(value)
+		end
 		if maxScroll <= 0 or content <= 0 then
 			bar:Hide()
-			thumb:Hide()
-			bar.maxOffset, bar.maxScroll = 0, 0
+			bar.offset, bar.maxOffset = 0, 0
 			return
 		end
 		bar:Show()
-		thumb:Show()
-		local thumbH = math.max(trackH * (view / content), 28)
+		local trackH = math.max(bar:GetHeight() or 0, 1)
+		local thumbH = math.max(math.floor(trackH * (view / content)), 28)
 		thumb:SetHeight(thumbH)
 		local maxOffset = math.max(trackH - thumbH, 0)
-		local value = scroll:GetVerticalScroll() or 0
 		local offset = 0
 		if maxOffset > 0 then
 			offset = (value / maxScroll) * maxOffset
 		end
-		thumb:ClearAllPoints()
-		thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -offset)
-		bar.offset, bar.maxOffset, bar.maxScroll = offset, maxOffset, maxScroll
+		bar.offset, bar.maxOffset = offset, maxOffset
+		place()
 	end
 
 	thumb:SetScript("OnEnter", function()
@@ -555,11 +565,12 @@ function M.MakeModernScrollbar(scroll)
 	thumb:SetScript("OnDragStart", function(self)
 		self.dragging = true
 		local startY = GetCursorPosition()
-		self:SetScript("OnUpdate", function()
+		self:SetScript("OnUpdate", function(self)
 			local _, cy = GetCursorPosition()
 			local scale = bar:GetEffectiveScale() or 1
 			local delta = (startY - cy) / scale
 			startY = GetCursorPosition()
+			update()
 			local maxOffset = bar.maxOffset or 0
 			local maxScroll = bar.maxScroll or 0
 			if maxOffset > 0 and maxScroll > 0 then
@@ -578,12 +589,14 @@ function M.MakeModernScrollbar(scroll)
 
 	scroll:EnableMouseWheel(true)
 	scroll:SetScript("OnMouseWheel", function(self, delta)
+		update()
 		local maxScroll = bar.maxScroll or 0
 		local step = 40
 		local value = math.max(0, math.min((self:GetVerticalScroll() or 0) - delta * step, maxScroll))
 		self:SetVerticalScroll(value)
 		update()
 	end)
+	pcall(scroll.HookScript, scroll, "OnSizeChanged", update)
 
 	update()
 	return {

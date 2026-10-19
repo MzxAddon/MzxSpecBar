@@ -1100,8 +1100,8 @@ function mod:GetQuickMenu()
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
 
 	local scroll = CreateFrame("ScrollFrame", nil, f)
-	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -26)
-	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 8)
+	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 8, -26)
+	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -12, 8)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 
 	local rows = CreateFrame("Frame", nil, scroll)
@@ -1124,11 +1124,11 @@ function mod:RefreshQuickMenu()
 	end
 	local rowIndex = 0
 	local y = 0
-	local rowWidth = math.max((rows:GetWidth() or 0) - 12, 60)
 
 	local function addRow(icon, name, selected, onClick, opts)
 		opts = opts or {}
 		local height = opts.height or QUICK_ROW_HEIGHT
+		local indent = opts.indent and 18 or 0
 		rowIndex = rowIndex + 1
 		local row = rows.rowPool[rowIndex]
 		if not row then
@@ -1137,8 +1137,8 @@ function mod:RefreshQuickMenu()
 		end
 		row:SetHeight(height)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6 + (opts.indent and 18 or 0), -y)
-		row:SetWidth(math.max(rowWidth - (opts.indent and 18 or 0), 40))
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", indent, -y)
+		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -y)
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name or "")
 		if opts.dim then
@@ -1177,8 +1177,9 @@ function mod:RefreshQuickMenu()
 	for i = rowIndex + 1, #rows.rowPool do
 		rows.rowPool[i]:Hide()
 	end
+	local viewH = math.min(math.max(y, 1), math.max((UIParent:GetHeight() or 800) - 100, 160) - 34)
 	rows:SetHeight(math.max(y, 1))
-	f:SetHeight(26 + math.max(y, 1) + 8)
+	f:SetHeight(26 + viewH + 8)
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
@@ -1333,8 +1334,8 @@ function mod:BuildOptions(p)
 	p.listLabel = listLabel
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 4, -242)
-	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -18, 66)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -242)
+	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 66)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
 
@@ -1387,8 +1388,8 @@ function mod:RefreshOptions()
 
 	local function fill(row, icon, name, sub, selected, onClick)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
-		row:SetWidth(math.max((rows:GetWidth() or 0) - 12, 40))
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
+		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name)
 		if row.sub then
