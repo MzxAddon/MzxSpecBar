@@ -1086,9 +1086,9 @@ local QUICK_MENU_MAX_WIDTH = 560
 local QUICK_MENU_HEIGHT = 420
 local QUICK_MENU_PAD = 22
 local QUICK_SPEC_TEXT_LEFT = 38
-local QUICK_CONFIG_MARK_LEFT = 8
-local QUICK_CONFIG_MARK_SIZE = 4
-local QUICK_CONFIG_TEXT_LEFT = 24
+local QUICK_CONFIG_MARK_LEFT = 10
+local QUICK_CONFIG_MARK_SIZE = 5
+local QUICK_CONFIG_TEXT_LEFT = 22
 local QUICK_ROW_HEIGHT = 28
 local QUICK_CONFIG_ROW_HEIGHT = 26
 
@@ -1188,7 +1188,8 @@ function mod:RefreshQuickMenu()
 			row.icon:SetColorTexture(0.88, 0.74, 0.32, 0.85)
 		end
 		row.name:ClearAllPoints()
-		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
+		row.name:SetJustifyV("MIDDLE")
+		row.name:SetPoint("LEFT", row, "LEFT", textLeft, 0)
 		row.name:SetText(name or "")
 		if opts.dim then
 			row.name:SetTextColor(0.80, 0.80, 0.86)
