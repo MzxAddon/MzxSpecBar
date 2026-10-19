@@ -204,22 +204,31 @@ local FLAT_BTN = {
 	disabled = { bg = { 0.12, 0.12, 0.14, 0.70 }, text = { 0.45, 0.45, 0.48 } },
 }
 
+local FLAT_BTN_DANGER = {
+	normal = { bg = { 0.29, 0.08, 0.08, 0.92 }, text = { 1.00, 0.42, 0.38 } },
+	hover = { bg = { 0.42, 0.12, 0.12, 0.95 }, text = { 1.00, 0.60, 0.55 } },
+	pushed = { bg = { 0.22, 0.06, 0.06, 0.95 }, text = { 1.00, 0.33, 0.29 } },
+	selected = { bg = { 0.36, 0.10, 0.10, 0.95 }, text = { 1.00, 0.70, 0.65 } },
+	disabled = { bg = { 0.16, 0.07, 0.07, 0.70 }, text = { 0.45, 0.32, 0.30 } },
+}
+
 function M.ApplyFlatButtonVisual(b)
 	local enabled = true
 	if b.IsEnabled then
 		enabled = b:IsEnabled()
 	end
+	local palette = b.danger and FLAT_BTN_DANGER or FLAT_BTN
 	local style
 	if not enabled then
-		style = FLAT_BTN.disabled
+		style = palette.disabled
 	elseif b.selected then
-		style = FLAT_BTN.selected
+		style = palette.selected
 	elseif b._pushed then
-		style = FLAT_BTN.pushed
+		style = palette.pushed
 	elseif b._hovered then
-		style = FLAT_BTN.hover
+		style = palette.hover
 	else
-		style = FLAT_BTN.normal
+		style = palette.normal
 	end
 	if b._setSkin then
 		b._setSkin(0, 0, 0, 0, style.bg[1], style.bg[2], style.bg[3], style.bg[4])
@@ -268,6 +277,14 @@ function M.MakeFlatButton(parent, w, h, text, onClick)
 	if onClick then
 		b:SetScript("OnClick", onClick)
 	end
+	M.ApplyFlatButtonVisual(b)
+	return b
+end
+
+-- 危险操作按钮（删除类）：深红底 + 亮红字
+function M.MakeFlatDangerButton(parent, w, h, text, onClick)
+	local b = M.MakeFlatButton(parent, w, h, text, onClick)
+	b.danger = true
 	M.ApplyFlatButtonVisual(b)
 	return b
 end

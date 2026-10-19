@@ -33,6 +33,7 @@
 - 共享 UI 助手（**新 UI 一律复用这些，禁止手搓**）：
   - `M.MakeFlatSkin(frame, thickness)`、`M.SnapToPixelGrid(frame)`（`OnShow` + `OnDragStop` 处理半像素缺线）
   - `M.MakeFlatButton(parent, w, h, text, onClick)`、`M.SetButtonIcon(b, texPath, size)`（无文字图标按钮）
+  - `M.MakeFlatDangerButton(parent, w, h, text, onClick)`：**危险/删除类按钮**（深红底 `0.29/0.08/0.08` + 亮红字 `1.00/0.42/0.38`，hover 更亮、按下更深；禁用态单独一档）；普通按钮仍是 `FLAT_BTN` 深灰底白字。按钮靠 `b.danger` 标记切换配色，**删除类控件一律用这个**。
   - `M.MakeCloseButton`、`M.MakeFlatCheckbox`、`M.MakeSectionLabel`
   - ⚠️ **`CheckButton` 在 retail 只有 `GetChecked` / `SetChecked`，没有 `IsChecked`**（写 `cb:IsChecked()` 会 `attempt to call a nil value` 崩掉整个面板）。勾选状态由控件**自己翻转**，在 `OnClick` 里直接读 `GetChecked()` 就是新值，**绝对不要自己再 `SetChecked(not GetChecked())`**（双重翻转＝彻底点不动）。
   - ⚠️ **新建勾选框必须立刻从 DB 初始化状态**（`M:GetModulePanel` 里 `p.enable` 那行 `cb:SetChecked(self:IsModuleEnabled(mod.key))`）；`defaultEnabled = true` 的模块漏了这行，就会出现「打开显示未勾选 → 点了写入 true（本来就是 true，等于没变）→ 重载又显示未勾选」的假象，看着就像"没保存"。

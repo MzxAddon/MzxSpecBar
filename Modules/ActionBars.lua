@@ -1036,7 +1036,7 @@ function mod:BuildOptions(p)
 	end)
 	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
 
-	local del = M.MakeFlatButton(p, buttonWidth, 26, L["Delete saved data"], function()
+	local del = M.MakeFlatDangerButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
 	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
