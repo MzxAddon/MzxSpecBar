@@ -1086,7 +1086,8 @@ local QUICK_MENU_MAX_WIDTH = 560
 local QUICK_MENU_HEIGHT = 420
 local QUICK_MENU_PAD = 22
 local QUICK_SPEC_TEXT_LEFT = 38
-local QUICK_CONFIG_TEXT_LEFT = 26
+local QUICK_CONFIG_TEXT_LEFT = 22
+local QUICK_ROW_BULLET = "|cffe0bc52•|r "
 local QUICK_ROW_HEIGHT = 28
 local QUICK_CONFIG_ROW_HEIGHT = 26
 
@@ -1146,7 +1147,7 @@ function mod:RefreshQuickMenu()
 			for _, cfg in ipairs(BlizzardLoadouts(id)) do
 				local label2 = cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id))
 				entries[#entries + 1] = { id = id, configID = cfg.id, name = label2 }
-				maxText = math.max(maxText, MeasureText(label2) + QUICK_CONFIG_TEXT_LEFT)
+				maxText = math.max(maxText, MeasureText(QUICK_ROW_BULLET .. label2))
 			end
 		end
 	end
@@ -1173,19 +1174,21 @@ function mod:RefreshQuickMenu()
 		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -y)
 		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -y)
 		if icon then
+			row.icon:Show()
 			row.icon:SetSize(22, 22)
 			row.icon:ClearAllPoints()
 			row.icon:SetPoint("LEFT", 8, 0)
 			row.icon:SetTexture(icon)
 		else
-			row.icon:SetSize(4, 4)
-			row.icon:ClearAllPoints()
-			row.icon:SetPoint("LEFT", 14, 0)
-			row.icon:SetColorTexture(0.88, 0.74, 0.32, 0.85)
+			row.icon:Hide()
 		end
 		row.name:ClearAllPoints()
 		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
-		row.name:SetText(name or "")
+		if icon then
+			row.name:SetText(name or "")
+		else
+			row.name:SetText(QUICK_ROW_BULLET .. (name or ""))
+		end
 		if opts.dim then
 			row.name:SetTextColor(0.80, 0.80, 0.86)
 		else
