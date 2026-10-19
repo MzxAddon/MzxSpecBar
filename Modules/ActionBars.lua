@@ -13,6 +13,7 @@ M:RegisterModule(mod)
 
 M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")
 M:RegisterModuleEvent("TRAIT_CONFIG_UPDATED")
+M:RegisterModuleEvent("GLOBAL_MOUSE_DOWN")
 
 local MIN_LEVEL = 10
 local HERO_TALENT_LEVEL = 71
@@ -1108,17 +1109,7 @@ function mod:GetQuickMenu()
 	f.scroll = scroll
 	f.rows = rows
 	f.scrollbar = M.MakeModernScrollbar(scroll)
-
-	local catcher = CreateFrame("Frame", nil, UIParent)
-	catcher:SetFrameStrata("FULLSCREEN_DIALOG")
-	catcher:SetFrameLevel(8999)
-	catcher:SetAllPoints(UIParent)
-	catcher:EnableMouse(true)
-	catcher:Hide()
-	catcher:SetScript("OnMouseDown", function()
-		self:HideQuickMenu()
-	end)
-	f.catcher = catcher
+	f:EnableMouse(true)
 
 	f:Hide()
 	self.quickMenu = f
@@ -1275,18 +1266,27 @@ function mod:ShowQuickMenu()
 		end
 	end
 	f:Show()
-	if f.catcher then
-		f.catcher:Show()
-	end
 end
 
 function mod:HideQuickMenu()
 	if self.quickMenu then
-		if self.quickMenu.catcher then
-			self.quickMenu.catcher:Hide()
-		end
 		self.quickMenu:Hide()
 	end
+end
+
+function mod:OnGlobalMouseDown()
+	local f = self.quickMenu
+	if not f or not f:IsShown() then
+		return
+	end
+	if f:IsMouseOver() then
+		return
+	end
+	local button = M.minimapButton
+	if button and button:IsMouseOver() then
+		return
+	end
+	self:HideQuickMenu()
 end
 
 function mod:ToggleQuickMenu()
@@ -1538,5 +1538,7 @@ function mod:OnEvent(event, ...)
 			self.pendingLoadout = nil
 			self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 		end
+	elseif event == "GLOBAL_MOUSE_DOWN" then
+		self:OnGlobalMouseDown()
 	end
 end
