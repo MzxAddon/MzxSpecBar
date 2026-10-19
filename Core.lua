@@ -485,6 +485,9 @@ function M.MakeSectionLabel(parent, text)
 end
 
 -- 现代扁平滚动条：细轨道 + 无箭头可拖拽滑块 + 滚轮（自绘，不套 UIPanelScrollFrameTemplate）
+local SCROLLBAR_WIDTH = 12
+local SCROLLBAR_GUTTER = 20
+
 function M.MakeModernScrollbar(scroll)
 	if type(scroll) ~= "table" or type(scroll.GetVerticalScroll) ~= "function" then
 		return nil
@@ -492,7 +495,8 @@ function M.MakeModernScrollbar(scroll)
 	local bar = CreateFrame("Frame", nil, scroll)
 	bar:SetPoint("TOPRIGHT", 0, 0)
 	bar:SetPoint("BOTTOMRIGHT", 0, 0)
-	bar:SetWidth(12)
+	bar:SetWidth(SCROLLBAR_WIDTH)
+	bar.gutter = SCROLLBAR_GUTTER
 
 	local track = bar:CreateTexture(nil, "BACKGROUND")
 	track:SetColorTexture(0, 0, 0, 0.30)
@@ -514,15 +518,17 @@ function M.MakeModernScrollbar(scroll)
 		local view = scroll:GetHeight() or 1
 		local content = (child and child:GetHeight()) or 0
 		if child then
-			child:SetWidth(math.max((scroll:GetWidth() or 0) - 16, 40))
+			child:SetWidth(math.max((scroll:GetWidth() or 0) - SCROLLBAR_GUTTER, 40))
 		end
 		local maxScroll = math.max(content - view, 0)
 		local trackH = bar:GetHeight() or 1
 		if maxScroll <= 0 or content <= 0 then
+			bar:Hide()
 			thumb:Hide()
 			bar.maxOffset, bar.maxScroll = 0, 0
 			return
 		end
+		bar:Show()
 		thumb:Show()
 		local thumbH = math.max(trackH * (view / content), 28)
 		thumb:SetHeight(thumbH)

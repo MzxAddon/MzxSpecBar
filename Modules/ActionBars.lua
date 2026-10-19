@@ -1119,9 +1119,12 @@ function mod:RefreshQuickMenu()
 	local f = self:GetQuickMenu()
 	local rows = f.rows
 	rows.rowPool = rows.rowPool or {}
+	if f.scrollbar then
+		f.scrollbar:Update()
+	end
 	local rowIndex = 0
 	local y = 0
-	local rowWidth = math.max(f:GetWidth() - 30, 60)
+	local rowWidth = math.max((rows:GetWidth() or 0) - 12, 60)
 
 	local function addRow(icon, name, selected, onClick, opts)
 		opts = opts or {}
@@ -1135,7 +1138,7 @@ function mod:RefreshQuickMenu()
 		row:SetHeight(height)
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6 + (opts.indent and 18 or 0), -y)
-		row:SetWidth(rowWidth)
+		row:SetWidth(math.max(rowWidth - (opts.indent and 18 or 0), 40))
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name or "")
 		if opts.dim then
@@ -1384,8 +1387,8 @@ function mod:RefreshOptions()
 
 	local function fill(row, icon, name, sub, selected, onClick)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 8, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
-		row:SetWidth(rows:GetWidth())
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
+		row:SetWidth(math.max((rows:GetWidth() or 0) - 12, 40))
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name)
 		if row.sub then
