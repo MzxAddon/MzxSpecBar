@@ -21,13 +21,12 @@
 ## Notes-ruRU: Размещает заклинания на панелях команд в фиксированном порядке по классу и специализации.
 ## Notes-ptBR: Coloca os feitiços nas barras de ação em ordem fixa conforme a classe e especialização.
 ## Notes-itIT: Colloca le spell sulle barre azioni in ordine fisso in base a classe e specializzazione.
-## Version: 1.0.2
+## Version: 1.0.1
 ## Author: Mzx
 ## IconTexture: Interface\AddOns\MzxSpecBar\Textures\icon.tga
 ## SavedVariables: MzxSpecBarDB
 ## SavedVariablesPerCharacter: MzxSpecBarCharDB
 ## X-Category: Action Bars
-## X-Curse-Project-ID: 1752088
 
 Localization.lua
 Locales\zhCN.lua
