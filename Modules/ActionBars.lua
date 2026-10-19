@@ -106,7 +106,10 @@ end
 function mod:OnToggle(on)
 	if on then
 		M:SetMinimapContextHandler(function()
-			self:ToggleQuickMenu()
+			local ok, err = pcall(self.ToggleQuickMenu, self)
+			if not ok then
+				M.Print(string.format(L["Module %s error: %s"], "actionbars", tostring(err)))
+			end
 		end, function()
 			self:HideQuickMenu()
 		end)
