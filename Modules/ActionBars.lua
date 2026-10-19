@@ -1125,6 +1125,7 @@ function mod:RefreshQuickMenu()
 	end
 	local rowIndex = 0
 	local y = 0
+	local rowWidth = rows:GetWidth() or 0
 
 	local function addRow(icon, name, selected, onClick, opts)
 		opts = opts or {}
@@ -1140,10 +1141,20 @@ function mod:RefreshQuickMenu()
 		row:ClearAllPoints()
 		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -y)
 		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -y)
-		row.icon:SetTexture(icon or nil)
+		if icon then
+			row.icon:SetSize(22, 22)
+			row.icon:ClearAllPoints()
+			row.icon:SetPoint("LEFT", 8, 0)
+			row.icon:SetTexture(icon)
+		else
+			row.icon:SetSize(4, 4)
+			row.icon:ClearAllPoints()
+			row.icon:SetPoint("LEFT", 14, 0)
+			row.icon:SetColorTexture(0.88, 0.74, 0.32, 0.85)
+		end
 		row.name:ClearAllPoints()
 		row.name:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -6)
-		row.name:SetText(name or "")
+		M.Ellipsize(row.name, name or "", rowWidth - textLeft - 10)
 		if opts.dim then
 			row.name:SetTextColor(0.80, 0.80, 0.86)
 		else
@@ -1406,9 +1417,10 @@ function mod:RefreshOptions()
 		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
 		row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, -(used - 1) * (M.LIST_ROW_HEIGHT + 2))
 		row.icon:SetTexture(icon or nil)
-		row.name:SetText(name)
+		local maxWidth = (rows:GetWidth() or 0) - 48
+		M.Ellipsize(row.name, name or "", maxWidth)
 		if row.sub then
-			row.sub:SetText(sub or "")
+			M.Ellipsize(row.sub, sub or "", maxWidth)
 		end
 		row:SetSelected(selected and true or false)
 		row:SetStripe(used % 2 == 0)

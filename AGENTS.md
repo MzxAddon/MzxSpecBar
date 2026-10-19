@@ -43,6 +43,8 @@
   - `M.MakeModernScrollbar(scroll)`：**现代自绘滚动条**（3px 暗轨道 + 6px 亮滑块、无上下箭头、可拖拽、滚轮翻页，悬停/拖动时提亮）。**禁止再用 `UIPanelScrollFrameTemplate`**。用法：`scroll = CreateFrame("ScrollFrame", nil, parent)`（不带模板）→ `p.scrollbar = M.MakeModernScrollbar(scroll)`；**列表内容高度变化后必须调 `p.scrollbar:Update()`**。要点（都是踩过坑的）：
     - **滚动条自己接管内容宽度**：`SCROLLBAR_WIDTH = 6` / `SCROLLBAR_GUTTER = 10`（滑块 6 + 留白 4；轨道 2px、滑块 4px），`Update()` 把 scroll child 宽度设成 `scroll:GetWidth() - 10`，**调用方不许再 `SetWidth` 内容帧**。**滑块就该是细条（≤6px），右侧留白总共不超过 16px——空白越宽越像没做完**。
     - **行不许 `SetWidth`，改用双锚点拉伸**：`row:SetPoint("TOPLEFT", rows, "TOPLEFT", 0, y)` + `row:SetPoint("TOPRIGHT", rows, "TOPRIGHT", 0, y)`，行宽就永远等于内容框宽——手算宽度会因为刷新时序算出 0/旧值，导致点击区只剩左边一小块。缩进只加在左边锚点（`TOPLEFT, 18`），右边锚点保持 0。
+    - **行内文字一律走 `M.Ellipsize(fs, text, maxWidth)`**（`Core.lua`）：`FontString` **不会裁剪**，超长名字（玩家自取的配置名几十个字符很常见）会直接压出行外、盖到滚动条上。`M.Ellipsize` 先量一次宽度、按比例猜字符数、`TakeChars` 按 **UTF-8 码点**裁（中文名绝不能按字节切，会切出半个汉字），不够再逐字符回退，最后补 `...`。`maxWidth = 行宽 - 文字起点 - 10`。**禁止直接 `fs:SetText(长文本)` 上列表**。
+    - **无图标的次级行（如专精配置行）要有装饰标记**：复用 `row.icon` 改成 4×4 金色小块（`SetColorTexture(0.88, 0.74, 0.32, 0.85)`、锚 `LEFT 14`），有图标的父行则恢复 22×22 + `SetTexture(专精图标)` + `LEFT 8`；池化复用的行每次都要重设尺寸和锚点，否则大小/位置会串。
     - `Update()` 每次都会把滚动值夹到 `[0, maxScroll]`：滑块位置由**夹过的值**算，滑块永远不会飞出轨道；内容装得下时**只隐藏滑块、轨道照常显示**（用户明确要求轨道始终可见，否则设置页那种"只有一条方案"的列表看着像没有列表区），滚动值同时归零。
     - 滚轮/拖拽处理器里**先 `update()` 再读 `bar.maxScroll`/`bar.offset`**（这些值随时可能被刷新改动）；另外 `HookScript("OnSizeChanged", update)` 兜住几何变化。
     - **右键菜单尺寸是常量**：`QUICK_MENU_WIDTH = 236` / `QUICK_MENU_HEIGHT = 420`，**永远不按内容或屏幕高度动态调整**。行数不够菜单下面留白，行数多了在固定窗口里滚动。**轻量插件不要做"每次打开按屏幕尺寸重算布局"这种动态几何**——它既没有性能收益，又让菜单每次打开都在跳。定位方向判断用常量 `QUICK_MENU_HEIGHT` 即可。
