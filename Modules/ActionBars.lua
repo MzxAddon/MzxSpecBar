@@ -1123,7 +1123,7 @@ function mod:RefreshQuickMenu()
 	local rowH = QUICK_ROW_HEIGHT + QUICK_ITEM_GAP
 	local rowWidth = math.max(rows:GetWidth() - 8, 60)
 
-	local function addRow(icon, name, selected, onClick)
+	local function addRow(icon, name, selected, onClick, indent)
 		used = used + 1
 		rowIndex = rowIndex + 1
 		local row = rows.rowPool[rowIndex]
@@ -1132,7 +1132,7 @@ function mod:RefreshQuickMenu()
 			rows.rowPool[rowIndex] = row
 		end
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6, -(used - 1) * rowH)
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6 + (indent and 18 or 0), -(used - 1) * rowH)
 		row:SetWidth(rowWidth)
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name or "")
@@ -1171,18 +1171,13 @@ function mod:RefreshQuickMenu()
 					M.Print(L["Could not switch specialization"])
 				end
 			end)
-		end
-	end
-
-	local loadouts = BlizzardLoadouts(currentSpec)
-	if #loadouts > 0 then
-		addLabel(L["Specialization configurations"])
-		local selected = SelectedLoadoutID(currentSpec)
-		for _, cfg in ipairs(loadouts) do
-			addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
-				self:HideQuickMenu()
-				self:SwitchLoadout(cfg.id)
-			end)
+			local selected = SelectedLoadoutID(id)
+			for _, cfg in ipairs(BlizzardLoadouts(id)) do
+				addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
+					self:HideQuickMenu()
+					self:SwitchLoadout(id, cfg.id)
+				end, true)
+			end
 		end
 	end
 
@@ -1220,27 +1215,58 @@ function mod:RefreshQuickMenu()
 	end
 end
 
-function mod:SwitchLoadout(configID)
+function mod:SwitchLoadout(specID, configID)
 	if InCombatLockdown() then
 		M.Print(L["Action bars cannot be changed in combat"])
 		return
 	end
-	if type(C_ClassTalents) ~= "table" or type(C_ClassTalents.LoadConfig) ~= "function" then
+	self.pendingLoadout = { specID = specID, configID = configID }
+	self:ContinueLoadout()
+end
+
+function mod:ContinueLoadout()
+	local pending = self.pendingLoadout
+	if not pending then
 		return
 	end
-	local ok, result = pcall(C_ClassTalents.LoadConfig, configID, true)
-	if not ok then
-		M.Print(L["Could not switch configuration"])
+	if SpecID() ~= pending.specID then
+		if not SwitchSpecialization(pending.specID) then
+			self.pendingLoadout = nil
+			M.Print(L["Could not switch specialization"])
+			return
+		end
+		local function waitSpec(delay)
+			C_Timer.After(delay, function()
+				if self.pendingLoadout ~= pending then
+					return
+				end
+				if SpecID() ~= pending.specID then
+					if delay > 0.3 then
+						waitSpec(0.35)
+						return
+					end
+					self.pendingLoadout = nil
+					M.Print(L["Could not switch specialization"])
+					return
+				end
+				self:ContinueLoadout()
+			end)
+		end
+		waitSpec(0.25)
 		return
 	end
-	if result == 2 then
-		self.pendingLoadout = true
-		return
+	if type(C_ClassTalents) == "table" and type(C_ClassTalents.LoadConfig) == "function" then
+		local ok, result = pcall(C_ClassTalents.LoadConfig, pending.configID, true)
+		if not ok or result == 0 then
+			self.pendingLoadout = nil
+			M.Print(L["Could not switch configuration"])
+			return
+		end
+		if result == 2 then
+			return
+		end
 	end
-	if result == 0 then
-		M.Print(L["Could not switch configuration"])
-		return
-	end
+	self.pendingLoadout = nil
 	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 end
 
