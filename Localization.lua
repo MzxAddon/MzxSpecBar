@@ -32,7 +32,6 @@ local en = {
 	"ActionBars",
 	"Auto arrange",
 	"Specialization",
-	"Specializations",
 	"Specialization configurations",
 	"Save current specialization",
 	"Apply current specialization",
@@ -72,7 +71,6 @@ local en = {
 	"Could not switch configuration",
 	"Action bars cannot be changed in combat",
 	"Saved layouts",
-	"No saved layouts for this specialization",
 	"Hero talent",
 	-- 语言
 	"Language",

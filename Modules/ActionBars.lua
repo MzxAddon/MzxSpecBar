@@ -306,14 +306,16 @@ local function BlizzardLoadouts(specID)
 	end
 	for i = 1, #ids do
 		local configID = ids[i]
-		local name
-		if type(C_Traits) == "table" and type(C_Traits.GetConfigInfo) == "function" then
-			local okInfo, info = pcall(C_Traits.GetConfigInfo, configID)
-			if okInfo and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
-				name = info.name
+		if type(configID) == "number" and configID > 0 then
+			local name
+			if type(C_Traits) == "table" and type(C_Traits.GetConfigInfo) == "function" then
+				local okInfo, info = pcall(C_Traits.GetConfigInfo, configID)
+				if okInfo and type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+					name = info.name
+				end
 			end
+			list[#list + 1] = { id = configID, name = name }
 		end
-		list[#list + 1] = { id = configID, name = name }
 	end
 	return list
 end
@@ -1080,7 +1082,7 @@ end
 
 local QUICK_MENU_WIDTH = 250
 local QUICK_ROW_HEIGHT = 28
-local QUICK_ITEM_GAP = 2
+local QUICK_CONFIG_ROW_HEIGHT = 26
 
 function mod:GetQuickMenu()
 	if self.quickMenu then
@@ -1094,7 +1096,7 @@ function mod:GetQuickMenu()
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
 
-	local title = M.MakeSectionLabel(f, L["Specializations"])
+	local title = M.MakeSectionLabel(f, L["Specialization configurations"])
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
 
 	local scroll = CreateFrame("ScrollFrame", nil, f)
@@ -1117,48 +1119,35 @@ function mod:RefreshQuickMenu()
 	local f = self:GetQuickMenu()
 	local rows = f.rows
 	rows.rowPool = rows.rowPool or {}
-	rows.labelPool = rows.labelPool or {}
-	rows:SetWidth(f:GetWidth() - 28)
-	local used, rowIndex, labelIndex = 0, 0, 0
-	local rowH = QUICK_ROW_HEIGHT + QUICK_ITEM_GAP
-	local rowWidth = math.max(rows:GetWidth() - 8, 60)
+	local rowIndex = 0
+	local y = 0
+	local rowWidth = math.max(f:GetWidth() - 30, 60)
 
-	local function addRow(icon, name, selected, onClick, indent)
-		used = used + 1
+	local function addRow(icon, name, selected, onClick, opts)
+		opts = opts or {}
+		local height = opts.height or QUICK_ROW_HEIGHT
 		rowIndex = rowIndex + 1
 		local row = rows.rowPool[rowIndex]
 		if not row then
-			row = M.MakeListRow(rows, { height = QUICK_ROW_HEIGHT, singleLine = true })
+			row = M.MakeListRow(rows, { height = height, singleLine = true })
 			rows.rowPool[rowIndex] = row
 		end
+		row:SetHeight(height)
 		row:ClearAllPoints()
-		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6 + (indent and 18 or 0), -(used - 1) * rowH)
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6 + (opts.indent and 18 or 0), -y)
 		row:SetWidth(rowWidth)
 		row.icon:SetTexture(icon or nil)
 		row.name:SetText(name or "")
+		if opts.dim then
+			row.name:SetTextColor(0.80, 0.80, 0.86)
+		else
+			row.name:SetTextColor(0.95, 0.95, 0.98)
+		end
 		row:SetSelected(selected and true or false)
 		M.SetStateIcon(row, selected and true or false)
 		row:SetScript("OnClick", onClick)
 		row:Show()
-	end
-
-	local function addLabel(text, dim)
-		used = used + 1
-		labelIndex = labelIndex + 1
-		local fs = rows.labelPool[labelIndex]
-		if not fs then
-			fs = rows:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-			rows.labelPool[labelIndex] = fs
-		end
-		fs:ClearAllPoints()
-		fs:SetPoint("TOPLEFT", rows, "TOPLEFT", 10, -(used - 1) * rowH + 2)
-		fs:SetJustifyH("LEFT")
-		fs:SetTextColor(0.6, 0.6, 0.6)
-		if not dim then
-			fs:SetTextColor(1, 0.82, 0.2)
-		end
-		fs:SetText(text)
-		fs:Show()
+		y = y + height + (opts.gapAfter or 0)
 	end
 
 	local currentSpec = SpecID()
@@ -1170,46 +1159,23 @@ function mod:RefreshQuickMenu()
 				if id ~= currentSpec and not SwitchSpecialization(id) then
 					M.Print(L["Could not switch specialization"])
 				end
-			end)
+			end, { height = QUICK_ROW_HEIGHT, gapAfter = 2 })
 			local selected = SelectedLoadoutID(id)
 			for _, cfg in ipairs(BlizzardLoadouts(id)) do
 				addRow(nil, cfg.name or (L["Specialization configurations"] .. " " .. tostring(cfg.id)), cfg.id == selected, function()
 					self:HideQuickMenu()
 					self:SwitchLoadout(id, cfg.id)
-				end, true)
+				end, { height = QUICK_CONFIG_ROW_HEIGHT, indent = true, dim = true, gapAfter = 1 })
 			end
-		end
-	end
-
-	addLabel(L["Saved layouts"])
-	local heroMap = MapGet(self.db.profiles[ClassKey()], currentSpec)
-	local heroIDs = {}
-	if type(heroMap) == "table" then
-		for heroID in pairs(heroMap) do
-			heroIDs[#heroIDs + 1] = AsID(heroID)
-		end
-		SortIDs(heroIDs)
-	end
-	if #heroIDs == 0 then
-		addLabel(L["No saved layouts for this specialization"], true)
-	else
-		local specName, specIcon = SpecInfo(currentSpec)
-		for _, heroID in ipairs(heroIDs) do
-			addRow(specIcon, HeroName(heroID, currentSpec), HeroTreeID() == heroID, function()
-				self:HideQuickMenu()
-				self:ApplySpec(currentSpec, heroID)
-			end)
+			y = y + 7
 		end
 	end
 
 	for i = rowIndex + 1, #rows.rowPool do
 		rows.rowPool[i]:Hide()
 	end
-	for i = labelIndex + 1, #rows.labelPool do
-		rows.labelPool[i]:Hide()
-	end
-	rows:SetHeight(math.max(used, 1) * rowH)
-	f:SetHeight(26 + math.max(used, 1) * rowH + 10)
+	rows:SetHeight(math.max(y, 1))
+	f:SetHeight(26 + math.max(y, 1) + 8)
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
@@ -1401,7 +1367,9 @@ function mod:RefreshOptions()
 		return
 	end
 	rows.pool = rows.pool or {}
-	rows:SetWidth(math.max((p:GetWidth() or 444) - 28, 100))
+	if p.scrollbar then
+		p.scrollbar:Update()
+	end
 	local used = 0
 
 	local function takeRow()

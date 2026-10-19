@@ -513,6 +513,9 @@ function M.MakeModernScrollbar(scroll)
 		local child = scroll:GetScrollChild()
 		local view = scroll:GetHeight() or 1
 		local content = (child and child:GetHeight()) or 0
+		if child then
+			child:SetWidth(math.max((scroll:GetWidth() or 0) - 16, 40))
+		end
 		local maxScroll = math.max(content - view, 0)
 		local trackH = bar:GetHeight() or 1
 		if maxScroll <= 0 or content <= 0 then

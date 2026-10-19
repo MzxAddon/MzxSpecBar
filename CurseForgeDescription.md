@@ -11,6 +11,7 @@ MzxSpecBar is a small, self-contained addon for World of Warcraft Retail (Midnig
 - **Restores macros as well.** Macros are saved with their content and matched by content on restore. If a macro does not exist on the target character yet, it is created before the bars are arranged — character macros as character macros, general macros as general macros. A macro that already exists with the same content is reused, never duplicated, and existing macros are never edited or overwritten.
 - **Honest, itemized reports.** Every restore tells you exactly how many slots were applied and why the remaining ones were skipped: unavailable spell, unavailable item, macro not placed, or a placement that failed verification. The chat frame lists each skipped slot with its slot number, action name, type and id.
 - **Optional auto-apply on login.** Per character, you can let MzxSpecBar restore your layout automatically a moment after you log in. Characters that opt out keep their manual-only behaviour.
+- **Talent switcher on the minimap.** Right-click the minimap button to open Blizzard's own specialization list: every talent tree, with the specialization configurations Blizzard keeps for it underneath. Picking a configuration switches to that tree, loads that configuration and then arranges your action bars. The names and the list are Blizzard's own, nothing is invented by the addon.
 - **Verifies before it touches anything.** If none of the saved actions are available on the current character, MzxSpecBar gives up instead of clearing your bars. The pre-flight check runs before a single slot is touched.
 - **Minimal, consistent UI.** A small minimap button and a flat, dark options window that look the same as the other Mzx addons.
 
@@ -20,8 +21,9 @@ MzxSpecBar is a small, self-contained addon for World of Warcraft Retail (Midnig
 2. Arrange your action bars and pet bar however you like.
 3. Press **Save current specialization**. The layout is stored for your current class, specialization and hero talent tree.
 4. Press **Apply current specialization** to restore it at any time, or enable **Apply automatically** to have it restored shortly after you log in.
+5. Right-click the minimap button to switch talents: pick a specialization configuration from the list, and the bars for the specialization you land on are arranged right after the switch.
 
-To store a layout for a different specialization, switch to that specialization first and save again. MzxSpecBar never changes your specialization or your talent choices for you.
+To store a layout for a different specialization, switch to that specialization first and save again. Saving and applying never change your specialization or your talents — only the minimap talent switcher does, and only because you clicked a configuration.
 
 ## Slash commands
 
@@ -37,7 +39,8 @@ To store a layout for a different specialization, switch to that specialization 
 
 - Retail only (Interface 120105). No Classic, Anniversary or other client versions are supported.
 - Characters below level 10 do not participate.
-- A layout is stored for the specialization and hero talent tree that were active while saving. Switching specialization or hero talent tree means saving again — there is no "save every specialization" action, and the addon never touches your talents.
+- A layout is stored for the specialization and hero talent tree that were active while saving. Switching specialization or hero talent tree means saving again — there is no "save every specialization" action, and the addon never touches your talents while saving or applying.
+- The minimap talent switcher lists Blizzard's specialization configurations only. Blizzard's built-in starter configuration (the "entry talent configuration" entry in the talent panel) is not listed, so it can never be selected by accident.
 - Equipment set buttons (`equipmentset` / `equipmacro`) and the built-in pet bar controls (Attack, Follow, Stay, Defensive, Passive) are not saved.
 - Spells, items and macros that do not exist on the target character cannot be restored. They are reported one by one instead of failing silently.
 - Macros are restored by content: a macro with different content but the same name is left untouched, and a new macro is created only when no macro with the same content exists.
