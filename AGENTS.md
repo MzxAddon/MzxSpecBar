@@ -70,6 +70,7 @@
 - **小地图右键 = 快速列表**（`M:SetMinimapContextHandler(fn, hideFn)`，模块在 `mod:OnToggle` 里注册；左键仍是开关设置窗，打开设置窗会顺手关掉快速列表）：弹层**贴整个小地图展开**（`Minimap` 的左/右边缘，不压在小地图上；小地图按钮只用来判断往屏幕内侧哪边开），**按钮在屏幕下半部时改为向上展开**（`openDown = cy < menuH + 40` 判反），`FULLSCREEN_DIALOG` + level 9000，与配置窗同级。内容：
   1. **每个专精一行（暴雪天赋树）**，行下**缩进挂该专精自己的「专精配置」**（= 暴雪天赋面板左下角那个下拉里的东西：`C_ClassTalents.GetConfigIDsBySpecID(specID)` 取配置 ID → `C_Traits.GetConfigInfo(configID).name` 取**暴雪给的名字**；当前选中的用 `C_ClassTalents.GetLastSelectedSavedConfigID(specID)` 打勾）。**「切换专精」在暴雪模型里 = 挑一份专精配置**，所以配置才是可点的行，暴雪的专精名只是分组头。`configID <= 0`（入门天赋配置 `-2` 等特殊项）必须跳过，否则一点就把天赋重置成初始。
   - **右键菜单只干"切天赋"这一件事**：不显示本插件已保存的方案、不显示任何插件自造数据（那些只在设置窗里）。用户明确要求过。
+  - **点任意处都能关闭**：菜单开着一个铺满 `UIParent` 的透明"点击拦截层"（`FULLSCREEN_DIALOG` + level **8999**，正好压在菜单 9000 之下，所以菜单自身点击照常命中），`OnMouseDown` → `HideQuickMenu()`；`ShowQuickMenu` 时 `catcher:Show()`、`HideQuickMenu` 里必须一起 `catcher:Hide()`（漏了就变成"关不掉的全屏透明层"，比 bug 更烦）。
   - 点配置 = `mod:SwitchLoadout(specID, configID)`：专精不一致先 `SwitchSpecialization(specID)`（0.25s 复查、未到位再等 0.35s 复查一次）→ 专精到位后 `C_ClassTalents.LoadConfig(configID, true)`；返回 `2 (LoadInProgress)` 时挂 `self.pendingLoadout` 等 `TRAIT_CONFIG_UPDATED` 再落动作条，`3/1` 立即应用，`0/出错` 报 `Could not switch configuration`。
   - 列表行用 `M.MakeListRow`，专精行高 28、配置行高 26（次级：缩进 18px + 文字调暗 0.80/0.80/0.86）；**排版用像素游标 `y`（`y = y + 高 + 间距`），不要用"第几行 × 固定行距"**——那样分组和条目的间距必然混成一团（主次不清）。滚动条用 `M.MakeModernScrollbar`。
 - **宏：保存存内容；恢复两阶段、顺序固定 = 先建宏 → 再排列动作条（宏没有"跳过"分支）**：

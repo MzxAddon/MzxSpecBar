@@ -1108,6 +1108,18 @@ function mod:GetQuickMenu()
 	f.scroll = scroll
 	f.rows = rows
 	f.scrollbar = M.MakeModernScrollbar(scroll)
+
+	local catcher = CreateFrame("Frame", nil, UIParent)
+	catcher:SetFrameStrata("FULLSCREEN_DIALOG")
+	catcher:SetFrameLevel(8999)
+	catcher:SetAllPoints(UIParent)
+	catcher:EnableMouse(true)
+	catcher:Hide()
+	catcher:SetScript("OnMouseDown", function()
+		self:HideQuickMenu()
+	end)
+	f.catcher = catcher
+
 	f:Hide()
 	self.quickMenu = f
 	return f
@@ -1263,10 +1275,16 @@ function mod:ShowQuickMenu()
 		end
 	end
 	f:Show()
+	if f.catcher then
+		f.catcher:Show()
+	end
 end
 
 function mod:HideQuickMenu()
 	if self.quickMenu then
+		if self.quickMenu.catcher then
+			self.quickMenu.catcher:Hide()
+		end
 		self.quickMenu:Hide()
 	end
 end
