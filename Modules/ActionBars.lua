@@ -1082,7 +1082,7 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 end
 
 local QUICK_MENU_MIN_WIDTH = 236
-local QUICK_MENU_MAX_WIDTH = 420
+local QUICK_MENU_MAX_WIDTH = 560
 local QUICK_MENU_HEIGHT = 420
 local QUICK_MENU_PAD = 22
 local QUICK_SPEC_TEXT_LEFT = 38
