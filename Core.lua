@@ -334,59 +334,34 @@ function M.MakeCloseButton(parent)
 	return btn
 end
 
-local function CheckedState(cb)
-	if type(cb.GetChecked) == "function" then
-		local ok, checked = pcall(cb.GetChecked, cb)
-		if ok then
-			return checked and true or false
-		end
-	end
-	return false
-end
-
 function M.MakeFlatCheckbox(parent, text, onClick)
 	local cb = CreateFrame("CheckButton", nil, parent)
-	cb:SetSize(16, 16)
-	local bg = cb:CreateTexture(nil, "BACKGROUND")
-	bg:SetAllPoints()
-	bg:SetColorTexture(0.13, 0.14, 0.16, 0.85)
-	local mark = cb:CreateTexture(nil, "OVERLAY")
-	mark:SetSize(12, 12)
-	mark:SetPoint("CENTER", 0, 0)
-	mark:SetColorTexture(1, 0.82, 0.2, 1)
-	local fs = cb:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+	cb:SetSize(18, 18)
+	local setSkin = M.MakeFlatSkin(cb, 1)
+	setSkin(0, 0, 0, 0, 0.08, 0.09, 0.11, 0.95)
+	local check = cb:CreateTexture(nil, "OVERLAY")
+	check:SetPoint("CENTER", 0, 0)
+	check:SetSize(10, 10)
+	check:SetColorTexture(1, 0.82, 0.20, 1)
+	cb:SetCheckedTexture(check)
+	local hover = cb:CreateTexture(nil, "HIGHLIGHT")
+	hover:SetAllPoints()
+	hover:SetColorTexture(1, 1, 1, 0.08)
+	cb:SetHighlightTexture(hover, "ADD")
+	local fs = cb:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	fs:SetPoint("LEFT", cb, "RIGHT", 6, 0)
 	fs:SetJustifyH("LEFT")
 	fs:SetText(text)
-	local hl = cb:CreateTexture(nil, "HIGHLIGHT")
-	hl:SetAllPoints()
-	hl:SetColorTexture(1, 1, 1, 0.06)
-
-	local function refresh(self)
-		mark:SetShown(CheckedState(self))
-	end
-
+	cb.Text = fs
 	cb:SetScript("OnEnter", function()
-		hl:SetColorTexture(1, 1, 1, 0.12)
+		hover:SetColorTexture(1, 1, 1, 0.14)
 	end)
 	cb:SetScript("OnLeave", function()
-		hl:SetColorTexture(1, 1, 1, 0.06)
+		hover:SetColorTexture(1, 1, 1, 0.08)
 	end)
-	cb:SetScript("OnClick", function(self)
-		refresh(self)
-		if onClick then
-			onClick(self)
-		end
-	end)
-	cb.SetLabel = function(_, value)
-		fs:SetText(value)
+	if onClick then
+		cb:SetScript("OnClick", onClick)
 	end
-	local setChecked = cb.SetChecked
-	cb.SetChecked = function(self, ...)
-		setChecked(self, ...)
-		refresh(self)
-	end
-	refresh(cb)
 	return cb
 end
 

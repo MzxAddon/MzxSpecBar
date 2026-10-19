@@ -34,7 +34,8 @@
   - `M.MakeFlatSkin(frame, thickness)`、`M.SnapToPixelGrid(frame)`（`OnShow` + `OnDragStop` 处理半像素缺线）
   - `M.MakeFlatButton(parent, w, h, text, onClick)`、`M.SetButtonIcon(b, texPath, size)`（无文字图标按钮）
   - `M.MakeFlatDangerButton(parent, w, h, text, onClick)`：**危险/删除类按钮**（深红底 `0.29/0.08/0.08` + 亮红字 `1.00/0.42/0.38`，hover 更亮、按下更深；禁用态单独一档）；普通按钮仍是 `FLAT_BTN` 深灰底白字。按钮靠 `b.danger` 标记切换配色，**删除类控件一律用这个**。
-  - `M.MakeCloseButton`、`M.MakeFlatCheckbox`、`M.MakeSectionLabel`
+  - `M.MakeCloseButton`、`M.MakeSectionLabel`
+  - `M.MakeFlatCheckbox(parent, text, onClick)`：**与 MzxRiding 逐像素一致**——方框 18×18（`MakeFlatSkin(cb,1)` 配色 `0,0,0,0 / 0.08,0.09,0.11,0.95`，即只描一圈细边），**金色选中标记只有 10×10**（`SetCheckedTexture`），标签 `GameFontNormalSmall` 距框右 6px，悬停 HIGHLIGHT ADD `1,1,1,0.08`→`0.14`。**不许自己改成 16×16 框 + 12×12 实心方块**——三个 Mzx 插件的勾选框必须看起来一模一样。勾选状态用 `GetChecked()` 读（retail 没有 `IsChecked`）。
   - ⚠️ **`CheckButton` 在 retail 只有 `GetChecked` / `SetChecked`，没有 `IsChecked`**（写 `cb:IsChecked()` 会 `attempt to call a nil value` 崩掉整个面板）。勾选状态由控件**自己翻转**，在 `OnClick` 里直接读 `GetChecked()` 就是新值，**绝对不要自己再 `SetChecked(not GetChecked())`**（双重翻转＝彻底点不动）。
   - ⚠️ **新建勾选框必须立刻从 DB 初始化状态**（`M:GetModulePanel` 里 `p.enable` 那行 `cb:SetChecked(self:IsModuleEnabled(mod.key))`）；`defaultEnabled = true` 的模块漏了这行，就会出现「打开显示未勾选 → 点了写入 true（本来就是 true，等于没变）→ 重载又显示未勾选」的假象，看着就像"没保存"。
   - **`M.MakeListRow(parent, opts)`**（`M.LIST_ROW_HEIGHT = 40`；opts: `height, iconSize=22, stripe, singleLine, onClick`；`row.icon/name/sub/state`；`row:SetSelected(on)` 金色调 + 2px 金色左强调条；`row:SetStripe(on)`）——**两行文字的行内间距要统一**：第一行 `name` 距顶 -6、第二行 `sub` 距顶 -22（行高 40 时上下留白对称、行距 16px），图标 22×22 垂直居中；不要出现"上边距和下边距不一样"的排版。
