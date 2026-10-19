@@ -14,8 +14,8 @@ local en = {
 	"Enable this module",
 	"Module %s error: %s",
 	"Module %s options error: %s",
-	"Left-click to open/close settings",
-	"Right-click for the quick list",
+	"Open/close settings",
+	"Open the quick list",
 	"Drag to move the button",
 	-- 斜杠命令
 	"Commands:",

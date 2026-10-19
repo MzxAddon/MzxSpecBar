@@ -99,7 +99,7 @@
 - **新增语种流程（四处同步，缺一不可）**：① 新建 `Locales\<code>.lua`（`ns.RegisterLocale("<code>", { ... })`，覆盖全部英文键）；② TOC 里加 `Locales\<code>.lua` 一行；③ `Localization.lua` 的 `ns.knownLocales` 加一项；④ `Modules\Language.lua` 的 `LOCALES` 表加一项（母语名）。
 - **新增文案流程**：先在 `Localization.lua` 加英文基准串 → **10 个语种文件全部补上覆盖**（不要只补 zhCN/zhTW）→ 代码里 `L["English string"]`。改完跑 `i18naudit.js` 确认无「used missing」。
 - TOC 标题用 **MzxTool 的逐字母渐变配色**（品牌名 `MzxSpecBar` 逐字母上色 `8845EC → FF00D8`，与 MzxToolBox 同一条色带），各语种 `Title-xx` 只换描述文字、品牌名配色保持一致。
-- 提示行里的鼠标图标等内联图形统一由 `M.MouseIcon` 之类助手提供，**禁止各模块自己写内联纹理字符串或改尺寸**。`M.MouseIcon("L"/"R")`（`Core.lua`，与 MzxRiding 同规格、纹理各存一份）：自有 `Textures\mouse-left.tga` / `mouse-right.tga`（28×28 紧裁剪、图案内缩为 0，才能与正文左边线对齐），统一按 12:9 显示。凡是提示里出现"左键/右键"的地方都用它拼前缀：`GameTooltip:AddLine(M.MouseIcon("L") .. L["..."], ...)`。
+- 提示行里的鼠标图标等内联图形统一由 `M.MouseIcon` 之类助手提供，**禁止各模块自己写内联纹理字符串或改尺寸**。`M.MouseIcon("L"/"R")`（`Core.lua`，与 MzxRiding 同规格、纹理各存一份）：自有 `Textures\mouse-left.tga` / `mouse-right.tga`（28×28 紧裁剪、图案内缩为 0，才能与正文左边线对齐），统一按 12:9 显示。凡是提示里出现"左键/右键"的地方都用它拼前缀：`GameTooltip:AddLine(M.MouseIcon("L") .. L["..."], ...)`。**有图标就别再在文案里写"左键/右键"**（图标已经说明了，重复=偷懒）——词库里只能有 `Open/close settings` / `Open the quick list` 这种中性文案。
 
 ### 代码风格与约定
 - **不要添加任何注释，除非用户明确要求**。
