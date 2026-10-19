@@ -16,7 +16,6 @@ local en = {
 	"Module %s options error: %s",
 	"Open/close settings",
 	"Open the quick list",
-	"Drag to move the button",
 	-- 斜杠命令
 	"Commands:",
 	"  /msb                Open settings",

@@ -6,7 +6,6 @@ ns.RegisterLocale("koKR", {
 	["Module %s error: %s"] = "모듈 %s 오류: %s",
 	["Module %s options error: %s"] = "모듈 %s 설정 오류: %s",
 	["Open/close settings"] = "설정 열기/닫기",
-	["Drag to move the button"] = "드래그하여 버튼 이동",
 	["Open the quick list"] = "빠른 목록 열기",
 	["Commands:"] = "명령어:",
 	["  /msb                Open settings"] = "  /msb                설정 열기",

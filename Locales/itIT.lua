@@ -6,7 +6,6 @@ ns.RegisterLocale("itIT", {
 	["Module %s error: %s"] = "Errore del modulo %s: %s",
 	["Module %s options error: %s"] = "Errore opzioni del modulo %s: %s",
 	["Open/close settings"] = "Apri/chiudi le impostazioni",
-	["Drag to move the button"] = "Trascina per spostare il pulsante",
 	["Open the quick list"] = "Apri l'elenco rapido",
 	["Commands:"] = "Comandi:",
 	["  /msb                Open settings"] = "  /msb                Apri impostazioni",

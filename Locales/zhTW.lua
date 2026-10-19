@@ -6,7 +6,6 @@ ns.RegisterLocale("zhTW", {
 	["Module %s error: %s"] = "模組 %s 出錯：%s",
 	["Module %s options error: %s"] = "模組 %s 選項出錯：%s",
 	["Open/close settings"] = "開關設定介面",
-	["Drag to move the button"] = "拖動可移動按鈕",
 	["Open the quick list"] = "打開快速列表",
 	["Commands:"] = "命令：",
 	["  /msb                Open settings"] = "  /msb                開啟設定介面",

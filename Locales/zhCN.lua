@@ -6,7 +6,6 @@ ns.RegisterLocale("zhCN", {
 	["Module %s error: %s"] = "模块 %s 出错：%s",
 	["Module %s options error: %s"] = "模块 %s 选项出错：%s",
 	["Open/close settings"] = "开关设置界面",
-	["Drag to move the button"] = "拖动可移动按钮",
 	["Open the quick list"] = "打开快速列表",
 	["Commands:"] = "命令：",
 	["  /msb                Open settings"] = "  /msb                打开设置界面",

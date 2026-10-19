@@ -6,7 +6,6 @@ ns.RegisterLocale("deDE", {
 	["Module %s error: %s"] = "Modul %s Fehler: %s",
 	["Module %s options error: %s"] = "Modul %s Optionen-Fehler: %s",
 	["Open/close settings"] = "Einstellungen öffnen/schließen",
-	["Drag to move the button"] = "Ziehen, um den Button zu verschieben",
 	["Open the quick list"] = "Schnellliste öffnen",
 	["Commands:"] = "Befehle:",
 	["  /msb                Open settings"] = "  /msb                Einstellungen öffnen",

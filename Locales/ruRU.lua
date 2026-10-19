@@ -6,7 +6,6 @@ ns.RegisterLocale("ruRU", {
 	["Module %s error: %s"] = "Ошибка модуля %s: %s",
 	["Module %s options error: %s"] = "Ошибка настроек модуля %s: %s",
 	["Open/close settings"] = "Открыть/закрыть настройки",
-	["Drag to move the button"] = "Перетащите, чтобы переместить кнопку",
 	["Open the quick list"] = "Открыть быстрый список",
 	["Commands:"] = "Команды:",
 	["  /msb                Open settings"] = "  /msb                Открыть настройки",
