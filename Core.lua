@@ -334,6 +334,16 @@ function M.MakeCloseButton(parent)
 	return btn
 end
 
+local MOUSE_L = "|TInterface\\AddOns\\MzxSpecBar\\Textures\\mouse-left.tga:12:9|t "
+local MOUSE_R = "|TInterface\\AddOns\\MzxSpecBar\\Textures\\mouse-right.tga:12:9|t "
+
+function M.MouseIcon(which)
+	if which == "R" then
+		return MOUSE_R
+	end
+	return MOUSE_L
+end
+
 function M.MakeFlatCheckbox(parent, text, onClick)
 	local cb = CreateFrame("CheckButton", nil, parent)
 	cb:SetSize(18, 18)
@@ -936,8 +946,8 @@ function M:CreateMinimapButton()
 		GameTooltip:SetOwner(b, "ANCHOR_NONE")
 		GameTooltip:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -4)
 		GameTooltip:SetText(L["MzxSpecBar Settings"], 1, 1, 1)
-		GameTooltip:AddLine(L["Left-click to open/close settings"], 0.8, 0.8, 0.8)
-		GameTooltip:AddLine(L["Right-click for the quick list"], 0.8, 0.8, 0.8)
+		GameTooltip:AddLine(M.MouseIcon("L") .. L["Left-click to open/close settings"], 0.8, 0.8, 0.8)
+		GameTooltip:AddLine(M.MouseIcon("R") .. L["Right-click for the quick list"], 0.8, 0.8, 0.8)
 		GameTooltip:AddLine(L["Drag to move the button"], 0.6, 0.6, 0.6)
 		GameTooltip:Show()
 	end)
