@@ -104,6 +104,15 @@ function mod:IsAutoApplyAllowed()
 end
 
 function mod:OnToggle(on)
+	if on then
+		M:SetMinimapContextHandler(function()
+			self:ToggleQuickMenu()
+		end, function()
+			self:HideQuickMenu()
+		end)
+	else
+		M:SetMinimapContextHandler(nil, nil)
+	end
 end
 
 local function CurrentSpecIndex()
@@ -947,7 +956,11 @@ function mod:ApplyCurrent(silent)
 		end
 		return
 	end
-	local layout = self:LayoutFor(ClassKey(), SpecID(), HeroTreeID())
+	self:ApplyLayoutFor(SpecID(), HeroTreeID(), silent)
+end
+
+function mod:ApplyLayoutFor(specID, heroID, silent)
+	local layout = self:LayoutFor(ClassKey(), specID, heroID)
 	if not layout then
 		if not silent then
 			M.Print(L["Nothing saved for this specialization"])
@@ -1000,6 +1013,164 @@ function mod:ApplyCurrent(silent)
 		self.warnings = nil
 		self:RefreshOptions()
 	end
+end
+
+local QUICK_MENU_WIDTH = 250
+local QUICK_ROW_HEIGHT = 28
+local QUICK_ITEM_GAP = 2
+
+function mod:GetQuickMenu()
+	if self.quickMenu then
+		return self.quickMenu
+	end
+	local f = CreateFrame("Frame", "MzxSpecBarQuickMenu", UIParent)
+	f:SetFrameStrata("FULLSCREEN_DIALOG")
+	f:SetFrameLevel(9000)
+	f:SetSize(QUICK_MENU_WIDTH, 120)
+	local setColors = M.MakeFlatSkin(f, 1)
+	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
+	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
+
+	local title = M.MakeSectionLabel(f, L["Specializations"])
+	title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
+
+	local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -26)
+	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 8)
+	pcall(scroll.SetClippingEnabled, scroll, true)
+
+	local rows = CreateFrame("Frame", nil, scroll)
+	rows:SetSize(1, 1)
+	scroll:SetScrollChild(rows)
+	f.scroll = scroll
+	f.rows = rows
+	f:Hide()
+	self.quickMenu = f
+	return f
+end
+
+function mod:RefreshQuickMenu()
+	local f = self:GetQuickMenu()
+	local rows = f.rows
+	rows.rowPool = rows.rowPool or {}
+	rows.labelPool = rows.labelPool or {}
+	rows:SetWidth(f:GetWidth() - 28)
+	local used, rowIndex, labelIndex = 0, 0, 0
+	local rowH = QUICK_ROW_HEIGHT + QUICK_ITEM_GAP
+	local rowWidth = math.max(rows:GetWidth() - 8, 60)
+
+	local function addRow(icon, name, selected, onClick)
+		used = used + 1
+		rowIndex = rowIndex + 1
+		local row = rows.rowPool[rowIndex]
+		if not row then
+			row = M.MakeListRow(rows, { height = QUICK_ROW_HEIGHT, singleLine = true })
+			rows.rowPool[rowIndex] = row
+		end
+		row:ClearAllPoints()
+		row:SetPoint("TOPLEFT", rows, "TOPLEFT", 6, -(used - 1) * rowH)
+		row:SetWidth(rowWidth)
+		row.icon:SetTexture(icon or nil)
+		row.name:SetText(name or "")
+		row:SetSelected(selected and true or false)
+		M.SetStateIcon(row, selected and true or false)
+		row:SetScript("OnClick", onClick)
+		row:Show()
+	end
+
+	local function addLabel(text, dim)
+		used = used + 1
+		labelIndex = labelIndex + 1
+		local fs = rows.labelPool[labelIndex]
+		if not fs then
+			fs = rows:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+			rows.labelPool[labelIndex] = fs
+		end
+		fs:ClearAllPoints()
+		fs:SetPoint("TOPLEFT", rows, "TOPLEFT", 10, -(used - 1) * rowH + 2)
+		fs:SetJustifyH("LEFT")
+		fs:SetTextColor(0.6, 0.6, 0.6)
+		if not dim then
+			fs:SetTextColor(1, 0.82, 0.2)
+		end
+		fs:SetText(text)
+		fs:Show()
+	end
+
+	local currentSpec = SpecID()
+	for i = 1, NumSpecializations() do
+		local id, name, icon = SpecInfoByIndex(i)
+		if id then
+			addRow(icon, name or (L["Specialization"] .. " " .. tostring(id)), id == currentSpec, function()
+				self:HideQuickMenu()
+				if id ~= currentSpec and not pcall(SetSpecialization, id) then
+					M.Print(L["Could not switch specialization"])
+				end
+			end)
+		end
+	end
+
+	addLabel(L["Saved layouts"])
+	local heroMap = MapGet(self.db.profiles[ClassKey()], currentSpec)
+	local heroIDs = {}
+	if type(heroMap) == "table" then
+		for heroID in pairs(heroMap) do
+			heroIDs[#heroIDs + 1] = AsID(heroID)
+		end
+		SortIDs(heroIDs)
+	end
+	if #heroIDs == 0 then
+		addLabel(L["No saved layouts for this specialization"], true)
+	else
+		local specName, specIcon = SpecInfo(currentSpec)
+		for _, heroID in ipairs(heroIDs) do
+			addRow(specIcon, HeroName(heroID, currentSpec), HeroTreeID() == heroID, function()
+				self:HideQuickMenu()
+				self:ApplySpec(currentSpec, heroID)
+			end)
+		end
+	end
+
+	for i = rowIndex + 1, #rows.rowPool do
+		rows.rowPool[i]:Hide()
+	end
+	for i = labelIndex + 1, #rows.labelPool do
+		rows.labelPool[i]:Hide()
+	end
+	rows:SetHeight(math.max(used, 1) * rowH)
+	f:SetHeight(26 + math.max(used, 1) * rowH + 10)
+end
+
+function mod:ShowQuickMenu()
+	local f = self:GetQuickMenu()
+	self:RefreshQuickMenu()
+	local button = M.minimapButton
+	if button then
+		local cx = button:GetCenter()
+		local uiWidth = UIParent:GetWidth() or 1920
+		if cx and cx < uiWidth / 2 then
+			f:ClearAllPoints()
+			f:SetPoint("LEFT", button, "RIGHT", 8, 0)
+		else
+			f:ClearAllPoints()
+			f:SetPoint("RIGHT", button, "LEFT", -8, 0)
+		end
+	end
+	f:Show()
+end
+
+function mod:HideQuickMenu()
+	if self.quickMenu then
+		self.quickMenu:Hide()
+	end
+end
+
+function mod:ToggleQuickMenu()
+	if self.quickMenu and self.quickMenu:IsShown() then
+		self:HideQuickMenu()
+		return
+	end
+	self:ShowQuickMenu()
 end
 
 function mod:DeleteCurrentClass()
@@ -1182,16 +1353,43 @@ function mod:ApplySpec(specID, heroID)
 	end
 	specID = AsID(specID)
 	heroID = AsID(heroID)
-	local layout = self:LayoutFor(ClassKey(), specID, heroID)
-	if not layout then
+	if not self:LayoutFor(ClassKey(), specID, heroID) then
 		M.Print(L["Nothing saved for this specialization"])
 		return
 	end
-	if specID ~= SpecID() or heroID ~= HeroTreeID() then
-		M.Print(L["Switch to that specialization first"])
+	if SpecID() == specID then
+		self:ApplyLayoutFor(specID, heroID, false)
 		return
 	end
-	self:ApplyCurrent(false)
+	if self.pendingSpec then
+		return
+	end
+	self.pendingSpec = { specID = specID, heroID = heroID }
+	if not pcall(SetSpecialization, specID) then
+		self.pendingSpec = nil
+		M.Print(L["Could not switch specialization"])
+		return
+	end
+	local function waitForSwitch(delay)
+		C_Timer.After(delay, function()
+			local pending = self.pendingSpec
+			if not pending then
+				return
+			end
+			if SpecID() ~= pending.specID then
+				if delay > 0.3 then
+					waitForSwitch(0.35)
+					return
+				end
+				self.pendingSpec = nil
+				M.Print(L["Could not switch specialization"])
+				return
+			end
+			self.pendingSpec = nil
+			self:ApplyLayoutFor(pending.specID, pending.heroID, false)
+		end)
+	end
+	waitForSwitch(0.25)
 end
 
 function mod:OnEvent(event, ...)

@@ -15,6 +15,7 @@ local en = {
 	"Module %s error: %s",
 	"Module %s options error: %s",
 	"Left-click to open/close settings",
+	"Right-click for the quick list",
 	"Drag to move the button",
 	-- 斜杠命令
 	"Commands:",
@@ -31,6 +32,7 @@ local en = {
 	"ActionBars",
 	"Auto arrange",
 	"Specialization",
+	"Specializations",
 	"Save current specialization",
 	"Apply current specialization",
 	"Apply automatically",
@@ -65,9 +67,10 @@ local en = {
 	"Current: %s",
 	"Saved",
 	"Not saved",
-	"Switch to that specialization first",
+	"Could not switch specialization",
 	"Action bars cannot be changed in combat",
 	"Saved layouts",
+	"No saved layouts for this specialization",
 	"Hero talent",
 	-- 语言
 	"Language",
