@@ -72,10 +72,13 @@
   - 分桶规则：`SpellKnown`/`ItemKnown` 为假归 spell/item 桶，宏一律进 macro 桶，其余落 other 桶。
 - **技能 id / 动作槽 id 不要硬编码猜测，必须实机核对后再写。**
 
-### i18n / 本地化
-- `Localization.lua`：英文基准词库 + `ns.RegisterLocale(code, data)` + `ns.ApplyLocale(code)`（全量重置英文再套指定语言）；`ns.knownLocales` 为白名单，用于 DB 清洗。登录时若 `db.locale` 为空则 `GetLocale()`。
-- `Locales\*.lua` 各自只覆盖不同键。**enUS/enGB 不单独提供文件**，直接用基准。
-- 新增文案流程：先在 `Localization.lua` 加英文基准串 → 需要的话在 `Locales/zhCN.lua`（及 `zhTW`）加覆盖 → 代码里 `L["English string"]`。缺键自动回退英文，永不返回 nil。
+### i18n / 本地化（对标 MzxRiding）
+- `Localization.lua`：英文基准词库 + `ns.RegisterLocale(code, data)` + `ns.ApplyLocale(code)`（全量重置英文再套指定语言）；`ns.knownLocales` 为白名单，用于 DB 清洗。登录时若 `db.locale` 为空或不在白名单 → `GetLocale()`（**自动跟随客户端**）。`L` 带 `__index` 兜底，未声明的键返回键文本，**永不返回 nil**。
+- **语种集（与 MzxRiding 一致）**：`enUS` / `enGB` 直接用英文基准、**不单独提供文件**；其余 10 个语种各有文件：`Locales\zhCN.lua`、`zhTW.lua`、`koKR.lua`、`deDE.lua`、`frFR.lua`、`esES.lua`、`esMX.lua`、`ruRU.lua`、`ptBR.lua`、`itIT.lua`（`Locales\*.lua` 各自只覆盖不同键，缺键自动回退英文）。
+- **语言页 `Modules\Language.lua`**：`alwaysOn = true`（无启用勾选框），内容 = 「跟随客户端」+ 12 个语种，用 `M.MakeListRow` 列表行 + `M.SetStateIcon` 标记当前项；点击写 `M.db.locale = code or nil` 后 `ReloadUI()`（重载时 `PLAYER_LOGIN` 重新 `ApplyLocale`）。**语言名一律用母语原名**（如 "简体中文"、"Deutsch"、"Русский"），写在模块的 `LOCALES` 表里，**不进词库、不翻译**。
+- **新增语种流程（四处同步，缺一不可）**：① 新建 `Locales\<code>.lua`（`ns.RegisterLocale("<code>", { ... })`，覆盖全部英文键）；② TOC 里加 `Locales\<code>.lua` 一行；③ `Localization.lua` 的 `ns.knownLocales` 加一项；④ `Modules\Language.lua` 的 `LOCALES` 表加一项（母语名）。
+- **新增文案流程**：先在 `Localization.lua` 加英文基准串 → **10 个语种文件全部补上覆盖**（不要只补 zhCN/zhTW）→ 代码里 `L["English string"]`。改完跑 `i18naudit.js` 确认无「used missing」。
+- TOC 标题用 **MzxTool 的逐字母渐变配色**（品牌名 `MzxSpecBar` 逐字母上色 `8845EC → FF00D8`，与 MzxToolBox 同一条色带），各语种 `Title-xx` 只换描述文字、品牌名配色保持一致。
 - 提示行里的鼠标图标等内联图形统一由 `M.MouseIcon` 之类助手提供，**禁止各模块自己写内联纹理字符串或改尺寸**（若该插件后续引入）。
 
 ### 代码风格与约定

@@ -72,23 +72,18 @@ local en = {
 	-- 语言
 	"Language",
 	"Client default",
-	"zhCN",
-	"zhTW",
-	"enUS",
-	"enGB",
-	"koKR",
-	"deDE",
-	"frFR",
-	"esES",
-	"esMX",
-	"ruRU",
-	"ptBR",
-	"itIT",
 }
 for i = 1, #en do
 	L[en[i]] = en[i]
 end
 ns.enKeys = en
+
+-- 未声明的键回退为键文本（永不返回 nil）
+setmetatable(L, {
+	__index = function(_, key)
+		return key
+	end,
+})
 
 -- 语言代码白名单（DB 清洗与语言页都以此为准）
 ns.knownLocales = {

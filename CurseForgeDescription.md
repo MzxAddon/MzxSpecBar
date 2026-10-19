@@ -46,8 +46,15 @@ To store a layout for a different specialization, switch to that specialization 
 
 ## Localization
 
-- English (United Kingdom / United States)
-- 简体中文 (Simplified Chinese)
-- 繁體中文 (Traditional Chinese)
+- English (United States / United Kingdom)
+- Deutsch
+- Español (España / Latinoamérica)
+- Français
+- Italiano
+- Português (Brasil)
+- Русский
+- 简体中文
+- 繁體中文
+- 한국어
 
-The language follows your client by default and can be changed in the options window.
+The language follows your client automatically out of the box, and can be changed at any time on the **Language** tab of the options window.
