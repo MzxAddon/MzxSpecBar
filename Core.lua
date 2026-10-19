@@ -434,7 +434,7 @@ function M.MakeListRow(parent, opts)
 
 	if not opts.singleLine then
 		local sub = row:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
-		sub:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -23)
+		sub:SetPoint("TOPLEFT", row, "TOPLEFT", textLeft, -22)
 		sub:SetJustifyH("LEFT")
 		sub:SetTextColor(0.6, 0.6, 0.6)
 		row.sub = sub
@@ -715,6 +715,9 @@ function M:ToggleConfig()
 	if not self.db then
 		self:InitDB()
 	end
+	if self._minimapContextHide then
+		self._minimapContextHide()
+	end
 	if self.configFrame and self.configFrame:IsShown() then
 		self.configFrame:Hide()
 		return
@@ -723,6 +726,12 @@ function M:ToggleConfig()
 end
 
 -- ------------------------------------------------------------------ 小地图按钮
+
+-- 模块可注册小地图右键处理器（快速专精列表）
+function M:SetMinimapContextHandler(fn, hideFn)
+	self._minimapContext = fn
+	self._minimapContextHide = hideFn
+end
 
 local MINIMAP_ICON = "Interface\\AddOns\\MzxSpecBar\\Textures\\icon.tga"
 local MINIMAP_BUTTON_SIZE = 31
@@ -802,7 +811,7 @@ end
 function M:CreateMinimapButton()
 	local b = CreateFrame("Button", "MzxSpecBarMinimapButton", Minimap)
 	b:SetSize(MINIMAP_BUTTON_SIZE, MINIMAP_BUTTON_SIZE)
-	b:RegisterForClicks("LeftButtonUp")
+	b:RegisterForClicks("LeftButtonUp", "RightButtonUp")
 	b:RegisterForDrag("LeftButton")
 	b:SetFrameStrata("MEDIUM")
 	b:SetFrameLevel(8)
@@ -832,14 +841,21 @@ function M:CreateMinimapButton()
 		GameTooltip:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -4)
 		GameTooltip:SetText(L["MzxSpecBar Settings"], 1, 1, 1)
 		GameTooltip:AddLine(L["Left-click to open/close settings"], 0.8, 0.8, 0.8)
+		GameTooltip:AddLine(L["Right-click for the quick list"], 0.8, 0.8, 0.8)
 		GameTooltip:AddLine(L["Drag to move the button"], 0.6, 0.6, 0.6)
 		GameTooltip:Show()
 	end)
 	b:SetScript("OnLeave", function()
 		GameTooltip:Hide()
 	end)
-	b:SetScript("OnClick", function()
-		M:ToggleConfig()
+	b:SetScript("OnClick", function(_, button)
+		if button == "RightButton" then
+			if M._minimapContext then
+				M._minimapContext()
+			end
+		else
+			M:ToggleConfig()
+		end
 	end)
 	b:SetScript("OnDragStart", function(self)
 		self:LockHighlight()

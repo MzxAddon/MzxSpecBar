@@ -37,9 +37,9 @@
   - `M.MakeCloseButton`、`M.MakeFlatCheckbox`、`M.MakeSectionLabel`
   - ⚠️ **`CheckButton` 在 retail 只有 `GetChecked` / `SetChecked`，没有 `IsChecked`**（写 `cb:IsChecked()` 会 `attempt to call a nil value` 崩掉整个面板）。勾选状态由控件**自己翻转**，在 `OnClick` 里直接读 `GetChecked()` 就是新值，**绝对不要自己再 `SetChecked(not GetChecked())`**（双重翻转＝彻底点不动）。
   - ⚠️ **新建勾选框必须立刻从 DB 初始化状态**（`M:GetModulePanel` 里 `p.enable` 那行 `cb:SetChecked(self:IsModuleEnabled(mod.key))`）；`defaultEnabled = true` 的模块漏了这行，就会出现「打开显示未勾选 → 点了写入 true（本来就是 true，等于没变）→ 重载又显示未勾选」的假象，看着就像"没保存"。
-  - **`M.MakeListRow(parent, opts)`**（`M.LIST_ROW_HEIGHT = 40`；opts: `height, iconSize=22, stripe, singleLine, onClick`；`row.icon/name/sub/state`；`row:SetSelected(on)` 金色调 + 2px 金色左强调条；`row:SetStripe(on)`）
+  - **`M.MakeListRow(parent, opts)`**（`M.LIST_ROW_HEIGHT = 40`；opts: `height, iconSize=22, stripe, singleLine, onClick`；`row.icon/name/sub/state`；`row:SetSelected(on)` 金色调 + 2px 金色左强调条；`row:SetStripe(on)`）——**两行文字的行内间距要统一**：第一行 `name` 距顶 -6、第二行 `sub` 距顶 -22（行高 40 时上下留白对称、行距 16px），图标 22×22 垂直居中；不要出现"上边距和下边距不一样"的排版。
   - `M.SetStateIcon(row, on, texPath, size)`：列表右侧状态图标，替代状态文字（首次调用会隐藏 `row.state`）
-- 小地图按钮（`M:CreateMinimapButton`）：31×31，父级 `Minimap`，`MEDIUM`/level 8，可拖动（拖动时用 `OnUpdate` 贴边，位置存 `db.minimapPos` 角度），左键开关设置窗，悬停显示提示。
+- 小地图按钮（`M:CreateMinimapButton`）：31×31，父级 `Minimap`，`MEDIUM`/level 8，可拖动（拖动时用 `OnUpdate` 贴边，位置存 `db.minimapPos` 角度），左键开关设置窗，悬停显示提示。**右键 = 快速列表**（`RegisterForClicks("LeftButtonUp", "RightButtonUp")`，`OnClick` 按 `button` 分派；具体内容由模块通过 `M:SetMinimapContextHandler(fn, hideFn)` 注册，没注册时右键无反应）。
 - 斜杠：`/msb` 空参数开关设置窗；`help`、`list`、`on <key>`、`off <key>`。`M:Slash(input)` 处理。
 - 事件转发需要框架本身注册事件：`M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")` 之类。
 
@@ -52,8 +52,10 @@
 - `mod:OnEvent(event, ...)`：经 `M:RegisterModuleEvent` 注册。**只注册 `PLAYER_ENTERING_WORLD`**，自动应用只处理本会话第一次。
 - 已实现的保存/恢复（`Modules\ActionBars.lua`）：存**账号级** `db.actionbars.profiles[classFile][specID][heroSubTreeID] = { savedAt, bars }`，同职业角色共享。`bars` 含 `slots`（动作槽 1–180，覆盖主条/额外条/形态分页）和 `pet`（宠物技能 1–10）。槽位 `{ t="spell"|"item"|"pet", id, sub }`。空槽不写键，恢复时先清空再放置。
 - 维度规则：等级 <10 直接不参与（保存时提示退出）；10-70 级 hero 键为 0；≥71 级用当前英雄天赋树 ID（`C_ClassTalents.GetActiveHeroTalentSpec()`）。
-- **保存 = 一次性同步快照当前专精 + 当前英雄树，没有「保存所有专精」，不切专精、不碰天赋、不用任何 `C_Timer` 轮询**（`mod:StartSave()` 单函数跑完）。曾经的跨专精/跨天赋保存链因为天赋配置切换无法可靠判定完成而反复切换天赋，已整体删除，相关 API（`SetSpecialization`/`C_ClassTalents.LoadConfig`/`GetConfigIDsBySpecID`/`GetHeroTalentSpecsForClassSpec`/`TRAIT_CONFIG_UPDATED`）**一律不要再引入**；需要存别的专精就让玩家手动切过去再点保存。
+- **保存 = 一次性同步快照当前专精 + 当前英雄树，没有「保存所有专精」，不切专精、不碰天赋、不用任何 `C_Timer` 轮询**（`mod:StartSave()` 单函数跑完）。曾经的跨专精/跨天赋保存链因为天赋配置切换无法可靠判定完成而反复切换天赋，已整体删除，相关 API（`C_ClassTalents.LoadConfig`/`GetConfigIDsBySpecID`/`GetHeroTalentSpecsForClassSpec`/`TRAIT_CONFIG_UPDATED`）**一律不要再引入**；需要存别的专精就让玩家手动切过去再点保存。**（`SetSpecialization` 的禁令只针对保存链——"点击已保存方案行"允许切专精，见下条；天赋配置 API 任何场景都不要再引入。）**
 - 因此模块里**没有 `mod.busy` 状态**（保存和应用都是同步的，不会重入）。
+- **点击「已保存方案」行 = 先切到对应专精，再排列动作条**（`mod:ApplySpec`）：不再提示"专精不对"、也不在专精不符时直接排列。流程：若当前专精就是目标专精 → 直接 `mod:ApplyLayoutFor(specID, heroID)`；否则 `pcall(SetSpecialization, specID)` → 延迟 0.25s 检查 `SpecID()`，没切成功再等 0.35s 复查一次，仍失败才报 `Could not switch specialization` → 成功后应用**点击的那条**方案。**只切专精，绝不碰英雄天赋配置 API**（天赋树不同导致的技能不可用由预检如实计入跳过数）。应用入口统一走 `mod:ApplyLayoutFor(specID, heroID, silent)`，`mod:ApplyCurrent(silent)` 只是它的"当前专精"特例。
+- **小地图右键 = 快速列表**（`M:SetMinimapContextHandler(fn, hideFn)`，模块在 `mod:OnToggle` 里注册；左键仍是开关设置窗，打开设置窗会顺手关掉快速列表）：弹层贴小地图按钮、靠屏幕内侧展开（`FULLSCREEN_DIALOG` + level 9000，与配置窗同级），内容 = **专精列表**（`SpecInfoByIndex` 枚举，`M.MakeListRow` + 勾选标记当前专精，点击 `SetSpecialization`）+ **当前专精下已保存的方案**（按英雄天赋树列出，点击 = 同 `ApplySpec` 逻辑；没有就显示 `No saved layouts for this specialization`）。列表行用 `M.MakeListRow`，行高 28、间距 2。
 - **宏：保存存内容；恢复两阶段、顺序固定 = 先建宏 → 再排列动作条（宏没有"跳过"分支）**：
   - 保存：宏槽存 `{t="macro", id=宏本索引或nil, name, icon, body=宏内容, pc=是否角色宏}`；`pc` 由宏本索引 `> GetNumMacros()` 首返回值判定；`equipmentset`/`equipmacro`、宠物栏无技能 ID 的内置指令各自单独计数，**宏不进任何跳过计数**。
   - 恢复 ①（**在清空动作条之前**）：预扫描 plan 中所有宏条目 → `FindMacroByContent(book, action)` 按**内容**找已有宏（先同名同内容，再任意同内容宏）→ 找到就**不创建**，并用**实际存在的那个宏名/宏本索引**去放置（可能与存档名不同）；找不到 → `CreateMacro(name, icon, body, pc and true or nil)`，**通用宏也创建**（`perCharacter` 传 nil）；创建成功把记录写回 `book` → 同一宏占多个槽位只建一次。恢复 ②：清空 180 槽 → 按槽位拾取放位（宏按 宏本索引 → 实际宏名 → 存档宏名 依次尝试）；回读校验用**实际宏名**（`SlotActionText(slot)` 或 `MacroNameAt(GetActionInfo 的 id)` 比对）。
