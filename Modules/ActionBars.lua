@@ -1243,12 +1243,12 @@ function mod:BuildOptions(p)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -18, 66)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
-	p.scrollbar = M.MakeModernScrollbar(scroll)
 
 	local rows = CreateFrame("Frame", nil, scroll)
 	rows:SetSize(1, 1)
 	scroll:SetScrollChild(rows)
 	p.rows = rows
+	p.scrollbar = M.MakeModernScrollbar(scroll)
 end
 
 function mod:RefreshOptions()

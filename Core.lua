@@ -500,11 +500,14 @@ function M.MakeModernScrollbar(scroll)
 	track:SetPoint("BOTTOM", bar, "BOTTOM", -4, 0)
 	track:SetWidth(3)
 
-	local thumb = bar:CreateTexture(nil, "ARTWORK")
-	thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+	local thumb = CreateFrame("Frame", nil, bar)
 	thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
 	thumb:SetWidth(7)
 	thumb:SetHeight(40)
+
+	local thumbTex = thumb:CreateTexture(nil, "ARTWORK")
+	thumbTex:SetAllPoints()
+	thumbTex:SetColorTexture(0.75, 0.75, 0.80, 0.55)
 
 	local function update()
 		local child = scroll:GetScrollChild()
@@ -532,11 +535,11 @@ function M.MakeModernScrollbar(scroll)
 	end
 
 	thumb:SetScript("OnMouseEnter", function()
-		thumb:SetColorTexture(0.95, 0.95, 1, 0.90)
+		thumbTex:SetColorTexture(0.95, 0.95, 1, 0.90)
 	end)
 	thumb:SetScript("OnMouseLeave", function()
 		if not thumb.dragging then
-			thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+			thumbTex:SetColorTexture(0.75, 0.75, 0.80, 0.55)
 		end
 	end)
 	thumb:RegisterForDrag("LeftButton")
@@ -560,7 +563,7 @@ function M.MakeModernScrollbar(scroll)
 	thumb:SetScript("OnDragStop", function(self)
 		self.dragging = false
 		self:SetScript("OnUpdate", nil)
-		thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+		thumbTex:SetColorTexture(0.75, 0.75, 0.80, 0.55)
 		update()
 	end)
 
