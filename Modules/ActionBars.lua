@@ -1034,7 +1034,7 @@ function mod:GetQuickMenu()
 	local title = M.MakeSectionLabel(f, L["Specializations"])
 	title:SetPoint("TOPLEFT", f, "TOPLEFT", 10, -8)
 
-	local scroll = CreateFrame("ScrollFrame", nil, f, "UIPanelScrollFrameTemplate")
+	local scroll = CreateFrame("ScrollFrame", nil, f)
 	scroll:SetPoint("TOPLEFT", f, "TOPLEFT", 2, -26)
 	scroll:SetPoint("BOTTOMRIGHT", f, "BOTTOMRIGHT", -16, 8)
 	pcall(scroll.SetClippingEnabled, scroll, true)
@@ -1044,6 +1044,7 @@ function mod:GetQuickMenu()
 	scroll:SetScrollChild(rows)
 	f.scroll = scroll
 	f.rows = rows
+	f.scrollbar = M.MakeModernScrollbar(scroll)
 	f:Hide()
 	self.quickMenu = f
 	return f
@@ -1139,6 +1140,9 @@ function mod:RefreshQuickMenu()
 	end
 	rows:SetHeight(math.max(used, 1) * rowH)
 	f:SetHeight(26 + math.max(used, 1) * rowH + 10)
+	if f.scrollbar then
+		f.scrollbar:Update()
+	end
 end
 
 function mod:ShowQuickMenu()
@@ -1146,14 +1150,24 @@ function mod:ShowQuickMenu()
 	self:RefreshQuickMenu()
 	local button = M.minimapButton
 	if button then
-		local cx = button:GetCenter()
+		local cx, cy = button:GetCenter()
 		local uiWidth = UIParent:GetWidth() or 1920
+		local menuH = f:GetHeight() or 160
+		local openDown = not (cy and cy < menuH + 40)
+		local anchor = Minimap or button
+		f:ClearAllPoints()
 		if cx and cx < uiWidth / 2 then
-			f:ClearAllPoints()
-			f:SetPoint("LEFT", button, "RIGHT", 8, 0)
+			if openDown then
+				f:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, -6)
+			else
+				f:SetPoint("BOTTOMLEFT", anchor, "TOPRIGHT", 10, 6)
+			end
 		else
-			f:ClearAllPoints()
-			f:SetPoint("RIGHT", button, "LEFT", -8, 0)
+			if openDown then
+				f:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -10, -6)
+			else
+				f:SetPoint("BOTTOMRIGHT", anchor, "TOPLEFT", -10, 6)
+			end
 		end
 	end
 	f:Show()
@@ -1224,11 +1238,12 @@ function mod:BuildOptions(p)
 	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -220)
 	p.listLabel = listLabel
 
-	local scroll = CreateFrame("ScrollFrame", nil, p, "UIPanelScrollFrameTemplate")
+	local scroll = CreateFrame("ScrollFrame", nil, p)
 	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 4, -242)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -18, 66)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
+	p.scrollbar = M.MakeModernScrollbar(scroll)
 
 	local rows = CreateFrame("Frame", nil, scroll)
 	rows:SetSize(1, 1)
@@ -1322,6 +1337,9 @@ function mod:RefreshOptions()
 		rows.pool[i]:Hide()
 	end
 	rows:SetHeight(math.max(used, 1) * (M.LIST_ROW_HEIGHT + 2))
+	if p.scrollbar then
+		p.scrollbar:Update()
+	end
 	if used == 0 and p.status then
 		p.status:SetText(L["Nothing saved for this class yet"])
 	end

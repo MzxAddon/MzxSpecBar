@@ -484,6 +484,102 @@ function M.MakeSectionLabel(parent, text)
 	return fs
 end
 
+-- 现代扁平滚动条：细轨道 + 无箭头可拖拽滑块 + 滚轮（自绘，不套 UIPanelScrollFrameTemplate）
+function M.MakeModernScrollbar(scroll)
+	if type(scroll) ~= "table" or type(scroll.GetVerticalScroll) ~= "function" then
+		return nil
+	end
+	local bar = CreateFrame("Frame", nil, scroll)
+	bar:SetPoint("TOPRIGHT", 0, 0)
+	bar:SetPoint("BOTTOMRIGHT", 0, 0)
+	bar:SetWidth(12)
+
+	local track = bar:CreateTexture(nil, "BACKGROUND")
+	track:SetColorTexture(0, 0, 0, 0.30)
+	track:SetPoint("TOP", bar, "TOP", -4, 0)
+	track:SetPoint("BOTTOM", bar, "BOTTOM", -4, 0)
+	track:SetWidth(3)
+
+	local thumb = bar:CreateTexture(nil, "ARTWORK")
+	thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+	thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, 0)
+	thumb:SetWidth(7)
+	thumb:SetHeight(40)
+
+	local function update()
+		local child = scroll:GetScrollChild()
+		local view = scroll:GetHeight() or 1
+		local content = (child and child:GetHeight()) or 0
+		local maxScroll = math.max(content - view, 0)
+		local trackH = bar:GetHeight() or 1
+		if maxScroll <= 0 or content <= 0 then
+			thumb:Hide()
+			bar.maxOffset, bar.maxScroll = 0, 0
+			return
+		end
+		thumb:Show()
+		local thumbH = math.max(trackH * (view / content), 28)
+		thumb:SetHeight(thumbH)
+		local maxOffset = math.max(trackH - thumbH, 0)
+		local value = scroll:GetVerticalScroll() or 0
+		local offset = 0
+		if maxOffset > 0 then
+			offset = (value / maxScroll) * maxOffset
+		end
+		thumb:ClearAllPoints()
+		thumb:SetPoint("TOPLEFT", bar, "TOPLEFT", 0, -offset)
+		bar.offset, bar.maxOffset, bar.maxScroll = offset, maxOffset, maxScroll
+	end
+
+	thumb:SetScript("OnMouseEnter", function()
+		thumb:SetColorTexture(0.95, 0.95, 1, 0.90)
+	end)
+	thumb:SetScript("OnMouseLeave", function()
+		if not thumb.dragging then
+			thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+		end
+	end)
+	thumb:RegisterForDrag("LeftButton")
+	thumb:SetScript("OnDragStart", function(self)
+		self.dragging = true
+		local startY = GetCursorPosition()
+		self:SetScript("OnUpdate", function()
+			local _, cy = GetCursorPosition()
+			local scale = bar:GetEffectiveScale() or 1
+			local delta = (startY - cy) / scale
+			startY = GetCursorPosition()
+			local maxOffset = bar.maxOffset or 0
+			local maxScroll = bar.maxScroll or 0
+			if maxOffset > 0 and maxScroll > 0 then
+				local offset = math.max(0, math.min((bar.offset or 0) + delta, maxOffset))
+				scroll:SetVerticalScroll((offset / maxOffset) * maxScroll)
+			end
+			update()
+		end)
+	end)
+	thumb:SetScript("OnDragStop", function(self)
+		self.dragging = false
+		self:SetScript("OnUpdate", nil)
+		thumb:SetColorTexture(0.75, 0.75, 0.80, 0.55)
+		update()
+	end)
+
+	scroll:EnableMouseWheel(true)
+	scroll:SetScript("OnMouseWheel", function(self, delta)
+		local maxScroll = bar.maxScroll or 0
+		local step = 40
+		local value = math.max(0, math.min((self:GetVerticalScroll() or 0) - delta * step, maxScroll))
+		self:SetVerticalScroll(value)
+		update()
+	end)
+
+	update()
+	return {
+		frame = bar,
+		Update = update,
+	}
+end
+
 -- ------------------------------------------------------------------ 设置界面
 
 local GUI_WIDTH = 470
