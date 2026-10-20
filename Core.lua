@@ -861,7 +861,23 @@ end
 local QUICK_MENU_HEIGHT = 420
 local QUICK_MENU_GAP = 12
 
-function M:GetMenuOwnerRect(menu, layout)
+function M:GetMenuOwnerRect(menu, anchorTo)
+	local b = self.minimapButton
+	local r = self.minimapButtonRadius or 0
+	local function buttonRect()
+		if b then
+			local bx, by = b:GetCenter()
+			if bx and by then
+				return bx - r, bx + r, by + r, by - r
+			end
+		end
+	end
+	if anchorTo and b then
+		local left, right, top, bottom = buttonRect()
+		if left then
+			return left, right, top, bottom
+		end
+	end
 	local f = self.configFrame
 	if f and f:IsShown() then
 		local left, right, top, bottom = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
@@ -869,25 +885,21 @@ function M:GetMenuOwnerRect(menu, layout)
 			return left, right, top, bottom
 		end
 	end
-	local b = self.minimapButton
-	local r = self.minimapButtonRadius or 0
-	if b then
-		local bx, by = b:GetCenter()
-		if bx and by then
-			return bx - r, bx + r, by + r, by - r
-		end
+	local left, right, top, bottom = buttonRect()
+	if left then
+		return left, right, top, bottom
 	end
 	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
 	local menuW = menu:GetWidth() or 236
-	local menuH = menu:GetHeight() or QUICK_MENU_HEIGHT
+	local menuH = math.min(menu:GetHeight() or QUICK_MENU_HEIGHT, screenH)
 	return (screenW - menuW) / 2, (screenW + menuW) / 2, screenH / 2, screenH / 2
 end
 
-function M:GetMenuLayout(menu)
+function M:GetMenuLayout(menu, anchorTo)
 	local menuW = (menu and menu:GetWidth()) or self.quickMenuWidth or 236
-	local menuH = (menu and menu:GetHeight()) or QUICK_MENU_HEIGHT
 	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
-	local left, right, top, bottom = self:GetMenuOwnerRect(menu)
+	local menuH = math.min((menu and menu:GetHeight()) or QUICK_MENU_HEIGHT, screenH)
+	local left, right, top, bottom = self:GetMenuOwnerRect(menu, anchorTo)
 	local gap = QUICK_MENU_GAP
 	local spaceRight = math.max(screenW - right - gap, 0)
 	local spaceLeft = math.max(left - gap, 0)
@@ -909,11 +921,11 @@ function M:GetMenuLayout(menu)
 	}
 end
 
-function M:PlaceQuickMenu(menu, layout)
+function M:PlaceQuickMenu(menu, layout, anchorTo)
 	if not menu then
 		return
 	end
-	layout = layout or self:GetMenuLayout(menu)
+	layout = layout or self:GetMenuLayout(menu, anchorTo)
 	local menuW = menu:GetWidth() or layout.width
 	local menuH = menu:GetHeight() or layout.height
 	local gap = QUICK_MENU_GAP
@@ -924,12 +936,14 @@ function M:PlaceQuickMenu(menu, layout)
 	local ax, ay
 	local side = layout.flipX and "right" or "left"
 	local vertical = layout.flipY and "below" or "above"
-	if not ((side == "right" and fitRight) or (side == "left" and fitLeft) or vertical == "below" and fitBelow or vertical == "above" and fitAbove) then
+	if (side == "right" and not fitRight) or (side == "left" and not fitLeft) then
 		if fitRight then
 			side = "right"
 		elseif fitLeft then
 			side = "left"
 		end
+	end
+	if (vertical == "below" and not fitBelow) or (vertical == "above" and not fitAbove) then
 		if fitBelow then
 			vertical = "below"
 		elseif fitAbove then
@@ -1072,7 +1086,7 @@ function M:CreateMinimapButton()
 	b:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
 			if M._minimapContext then
-				M._minimapContext()
+				M._minimapContext(M.minimapButton)
 			end
 		else
 			M:ToggleConfig()
