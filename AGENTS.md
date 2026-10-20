@@ -144,6 +144,10 @@
   - 描述里的"限制"是**承诺**：将来真实现了某条限制才算有理由改描述（那是有意的行为变更，值得改一次），其余一律不动。
   - 发版时提醒用户"整份复制替换 CF 描述页"——**通常内容与上一版完全相同**，不需要重写。
 - CF 上传的已知坑（已在工作流里处理，改动时勿回退）：**metadata 必须用 `--form-string` 发送**（`-F` 会把值里的 `;` 当分段符导致 JSON 被截断，CF 报 `Invalid JSON`）；metadata 用 Python `json.dumps` 生成；上传失败要打印 HTTP 码 + 响应体并重试。
+- **CF 的 `CF_API_TOKEN` 只有「上传」权限，没有「文件列表 / 删除」权限**（实测：`GET /api/projects/{id}/files` 返回 `403 {"errorCode":5100,"errorMessage":"You do not have permission to access this method."}`；`DELETE /api/projects/{id}/files/{fileId}` 返回 403 并 302 跳到 `https://www.curseforge.com/wow`）。**所以重复的 CF 文件条目只能去 CF 网页后台手动删**，工作流删不掉。`cleanup_file_ids` 输入留着，但要用有删除权限的 token 才有效。
+- **CF 每次上传都会新建一个文件条目**，`overwrite_files: true` 只覆盖文件内容、**不合并条目**。同一个版本号重复跑发布 → CF 上出现多个同名条目。**同一个版本不要重复跑发布**；要重跑先把 changelog 一起传上（否则 `changelog` 留空会退回 `git log`，**把 GitHub Release 正文覆盖成提交列表**）。
+- **本地访问 CF API 会被 Cloudflare 挡**（`wow.curseforge.com` 返回 "Just a moment..." 人机校验页；`api.curseforge.com` 各种路径返回真 404）。**只有 GitHub runner 能调 CF API**，所以 CF 侧的操作一律走工作流。
+- **改发布说明要同时更新 GitHub Release 和 CF**：`PATCH /repos/{owner}/{repo}/releases/{id}`（body）+ 重新上传 CF。CF 那边同名文件条目是叠加的，**不要为了改说明就重跑整条发布流水线**，那会造出重复条目。
 - **仓库 secret `CF_API_TOKEN` 已配置好。若发布日志出现「未配置 CF_API_TOKEN secret」，不要找用户要 token**：本机 git 凭据库里存着（`"protocol=https`nhost=api.curseforge.com`n`n" | git credential fill`），跑 `C:\Users\huang\AppData\Local\Temp\opencode\set_cf_secret.ps1` 即可用 libsodium sealed box 加密后 PUT 回仓库 secret（token 永不写进仓库、脚本或输出）。补完直接重新 dispatch 一次 `release_1xx.ps1`，GitHub Release 会原地更新，CF 那步会真的上传。
 
 ### 校验
