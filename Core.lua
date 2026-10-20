@@ -217,11 +217,11 @@ local FLAT_BTN = {
 }
 
 local FLAT_BTN_ALT = {
-	normal = { bg = { 0.25, 0.27, 0.31, 0.92 }, text = { 0.95, 0.95, 0.97 } },
-	hover = { bg = { 0.33, 0.35, 0.40, 0.95 }, text = { 1, 1, 1 } },
-	pushed = { bg = { 0.19, 0.21, 0.24, 0.95 }, text = { 1, 0.82, 0.2 } },
-	selected = { bg = { 0.30, 0.25, 0.10, 0.95 }, text = { 1, 0.82, 0.2 } },
-	disabled = { bg = { 0.17, 0.18, 0.21, 0.70 }, text = { 0.45, 0.45, 0.48 } },
+	normal = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.22, 0.08, 0.32, 1 }, iconBorder = { 0.17, 0.05, 0.26, 1 }, text = { 0.96, 0.92, 1.00 } },
+	hover = { bg = { 0.53, 0.24, 0.68, 0.95 }, border = { 0.31, 0.12, 0.45, 1 }, iconBorder = { 0.24, 0.08, 0.36, 1 }, text = { 1, 1, 1 } },
+	pushed = { bg = { 0.32, 0.13, 0.43, 0.95 }, border = { 0.17, 0.06, 0.25, 1 }, iconBorder = { 0.12, 0.04, 0.19, 1 }, text = { 1, 0.86, 0.35 } },
+	selected = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.88, 0.45, 0.94, 1 }, iconBorder = { 0.88, 0.45, 0.94, 1 }, text = { 1, 1, 1 } },
+	disabled = { bg = { 0.24, 0.17, 0.28, 0.70 }, border = { 0.16, 0.11, 0.19, 1 }, iconBorder = { 0.13, 0.09, 0.15, 1 }, text = { 0.52, 0.48, 0.55 } },
 }
 
 local FLAT_BTN_DANGER = {
@@ -256,7 +256,12 @@ function M.ApplyFlatButtonVisual(b)
 		style = palette.normal
 	end
 	if b._setSkin then
-		b._setSkin(0, 0, 0, 0, style.bg[1], style.bg[2], style.bg[3], style.bg[4])
+		local bd = style.border
+		if bd then
+			b._setSkin(bd[1], bd[2], bd[3], bd[4], style.bg[1], style.bg[2], style.bg[3], style.bg[4])
+		else
+			b._setSkin(0, 0, 0, 0, style.bg[1], style.bg[2], style.bg[3], style.bg[4])
+		end
 	end
 	local fs = b:GetFontString()
 	if fs then
@@ -264,6 +269,12 @@ function M.ApplyFlatButtonVisual(b)
 	end
 	if b.icon then
 		b.icon:SetVertexColor(style.text[1], style.text[2], style.text[3])
+	end
+	if b.iconFrame then
+		local ib = style.iconBorder or style.border
+		if ib then
+			b.iconFrame:SetColorTexture(ib[1], ib[2], ib[3], ib[4])
+		end
 	end
 end
 
@@ -335,10 +346,17 @@ end
 
 -- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
 -- opts.dock = true 时图标贴左/上/下内侧边缘（间距 opts.iconPad，默认 2），高度取按钮高 - 2*pad
--- opts.alt = true 时用中性偏亮的 FLAT_BTN_ALT 配色（与普通按钮区分）
+-- opts.iconW 指定图标宽（默认与高相等＝正方形）；opts.iconBorder 在图标外围加一圈该厚度的边框
+-- opts.alt = true 时用品牌紫的 FLAT_BTN_ALT 配色（与普通按钮区分）
 function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	opts = opts or {}
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
+	if opts.iconBorder then
+		local frame = b:CreateTexture(nil, "ARTWORK", nil, -1)
+		frame:SetColorTexture(0, 0, 0, 1)
+		b.iconFrame = frame
+		b.iconBorderPad = opts.iconBorder
+	end
 	local tex = b:CreateTexture(nil, "ARTWORK")
 	tex:SetSize(iconSize, iconSize)
 	tex:SetPoint("RIGHT", 0, 0)
@@ -347,6 +365,9 @@ function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	b.iconGap = 6
 	if opts.alt then
 		b.alt = true
+	end
+	if opts.iconW then
+		b.iconW = opts.iconW
 	end
 	if opts.dock then
 		b.iconDock = true
@@ -371,12 +392,20 @@ function M.LayoutIconTextButton(b)
 	fs:SetJustifyV("MIDDLE")
 	if b.iconDock and b.icon then
 		local pad = b.iconPad or 2
-		local hole = b:GetHeight() - pad * 2
+		local ih = b:GetHeight() - pad * 2
+		local iw = b.iconW or ih
 		b.icon:ClearAllPoints()
-		b.icon:SetSize(hole, hole)
+		b.icon:SetSize(iw, ih)
 		b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", pad, -pad)
+		if b.iconFrame then
+			local bw = b.iconBorderPad or 2
+			b.iconFrame:ClearAllPoints()
+			b.iconFrame:SetSize(iw + bw * 2, ih + bw * 2)
+			b.iconFrame:SetPoint("CENTER", b.icon, "CENTER", 0, 0)
+		end
+		local textLeft = (b.iconFrame and (b.iconBorderPad or 2) or 0)
 		fs:ClearAllPoints()
-		fs:SetPoint("LEFT", b.icon, "RIGHT", pad * 2, 0)
+		fs:SetPoint("LEFT", b.icon, "RIGHT", math.max(pad * 2, textLeft + pad), 0)
 		fs:SetPoint("RIGHT", b, "RIGHT", -pad * 2, 0)
 		return
 	end
