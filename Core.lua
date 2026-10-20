@@ -622,6 +622,7 @@ function M:RaiseConfigFrame()
 		configRaiseStep = 0
 		base = CONFIG_LEVEL
 	end
+	self.configLevel = base
 	f:SetFrameLevel(base)
 	if f.content then
 		f.content:SetFrameLevel(base + 1)
@@ -656,14 +657,6 @@ function M:CreateConfigFrame()
 	f:SetScript("OnShow", function()
 		if f.title then
 			f.title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
-		end
-		local switcher = f.switcher
-		if switcher then
-			switcher:SetShown(M._minimapContext ~= nil)
-			local label = switcher:GetFontString()
-			if label then
-				label:SetText(L["Switch talents"] .. "  " .. M.MouseIcon("R"))
-			end
 		end
 		M:RaiseConfigFrame()
 		M.SnapToPixelGrid(f)
@@ -704,15 +697,6 @@ function M:CreateConfigFrame()
 			M._minimapContextHide()
 		end
 	end)
-
-	local switcher = M.MakeFlatButton(f, 132, 18, L["Switch talents"] .. "  " .. M.MouseIcon("R"), function()
-		if M._minimapContext then
-			M._minimapContext()
-		end
-	end)
-	switcher:SetPoint("RIGHT", close, "LEFT", -6, 0)
-	switcher:SetFrameLevel(f:GetFrameLevel() + 4)
-	f.switcher = switcher
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarConfigFrame")
 
 	f.tabs = {}
@@ -873,6 +857,103 @@ function M:SetMinimapContextHandler(fn, hideFn)
 	self._minimapContextHide = hideFn
 end
 
+-- 菜单／右键弹层的定位模型：属主区域（设置窗或小地图按钮）→ 四向剩余空间 → 实际坐标
+local QUICK_MENU_HEIGHT = 420
+local QUICK_MENU_GAP = 12
+
+function M:GetMenuOwnerRect(menu, layout)
+	local f = self.configFrame
+	if f and f:IsShown() then
+		local left, right, top, bottom = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
+		if left and right and top and bottom then
+			return left, right, top, bottom
+		end
+	end
+	local b = self.minimapButton
+	local r = self.minimapButtonRadius or 0
+	if b then
+		local bx, by = b:GetCenter()
+		if bx and by then
+			return bx - r, bx + r, by + r, by - r
+		end
+	end
+	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
+	local menuW = menu:GetWidth() or 236
+	local menuH = menu:GetHeight() or QUICK_MENU_HEIGHT
+	return (screenW - menuW) / 2, (screenW + menuW) / 2, screenH / 2, screenH / 2
+end
+
+function M:GetMenuLayout(menu)
+	local menuW = (menu and menu:GetWidth()) or self.quickMenuWidth or 236
+	local menuH = (menu and menu:GetHeight()) or QUICK_MENU_HEIGHT
+	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
+	local left, right, top, bottom = self:GetMenuOwnerRect(menu)
+	local gap = QUICK_MENU_GAP
+	local spaceRight = math.max(screenW - right - gap, 0)
+	local spaceLeft = math.max(left - gap, 0)
+	local spaceBelow = math.max(bottom - gap, 0)
+	local spaceAbove = math.max(screenH - top - gap, 0)
+	return {
+		width = menuW,
+		height = menuH,
+		left = left,
+		right = right,
+		top = top,
+		bottom = bottom,
+		spaceRight = spaceRight,
+		spaceLeft = spaceLeft,
+		spaceBelow = spaceBelow,
+		spaceAbove = spaceAbove,
+		flipX = spaceRight >= menuW or spaceRight >= spaceLeft,
+		flipY = spaceBelow >= menuH or spaceBelow >= spaceAbove,
+	}
+end
+
+function M:PlaceQuickMenu(menu, layout)
+	if not menu then
+		return
+	end
+	layout = layout or self:GetMenuLayout(menu)
+	local menuW = menu:GetWidth() or layout.width
+	local menuH = menu:GetHeight() or layout.height
+	local gap = QUICK_MENU_GAP
+	local fitRight = layout.spaceRight >= menuW
+	local fitLeft = layout.spaceLeft >= menuW
+	local fitBelow = layout.spaceBelow >= menuH
+	local fitAbove = layout.spaceAbove >= menuH
+	local ax, ay
+	local side = layout.flipX and "right" or "left"
+	local vertical = layout.flipY and "below" or "above"
+	if not ((side == "right" and fitRight) or (side == "left" and fitLeft) or vertical == "below" and fitBelow or vertical == "above" and fitAbove) then
+		if fitRight then
+			side = "right"
+		elseif fitLeft then
+			side = "left"
+		end
+		if fitBelow then
+			vertical = "below"
+		elseif fitAbove then
+			vertical = "above"
+		end
+	end
+	if side == "right" then
+		ax = layout.right + gap
+	else
+		ax = layout.left - menuW - gap
+	end
+	if vertical == "below" then
+		ay = layout.bottom - menuH - gap
+	else
+		ay = layout.top + gap
+	end
+	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
+	ax = math.max(0, math.min(screenW - menuW, ax))
+	ay = math.max(0, math.min(screenH - menuH, ay))
+	menu:SetFrameLevel(math.min((self.configLevel or CONFIG_LEVEL) + 12, CONFIG_LEVEL_MAX))
+	menu:ClearAllPoints()
+	menu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ax, ay + menuH)
+end
+
 local MINIMAP_ICON = "Interface\\AddOns\\MzxSpecBar\\Textures\\icon.tga"
 local MINIMAP_BUTTON_SIZE = 31
 local MINIMAP_DEFAULT_POS = 135
@@ -938,6 +1019,7 @@ function M:UpdateMinimapButtonPosition(position)
 	end
 	b:ClearAllPoints()
 	b:SetPoint("CENTER", Minimap, "CENTER", x, y)
+	self.minimapButtonRadius = math.max(math.abs(x), math.abs(y), MINIMAP_BUTTON_SIZE / 2)
 end
 
 function M:PlaceMinimapButton()

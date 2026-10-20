@@ -1100,10 +1100,6 @@ function mod:GetQuickMenu()
 	local f = CreateFrame("Frame", "MzxSpecBarQuickMenu", UIParent)
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetFrameLevel(9000)
-	f.owner = M.configFrame
-	if f.owner then
-		f:SetFrameLevel(f.owner:GetFrameLevel() + 20)
-	end
 	f:SetSize(QUICK_MENU_MIN_WIDTH, QUICK_MENU_HEIGHT)
 	local setColors = M.MakeFlatSkin(f, 1)
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
@@ -1149,6 +1145,7 @@ function mod:RefreshQuickMenu()
 	end
 
 	f:SetWidth(math.min(math.max(maxText + QUICK_MENU_PAD, QUICK_MENU_MIN_WIDTH), QUICK_MENU_MAX_WIDTH))
+	self.quickMenuWidth = f:GetWidth()
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
@@ -1287,47 +1284,8 @@ end
 function mod:ShowQuickMenu(anchorTo)
 	local f = self:GetQuickMenu()
 	self:RefreshQuickMenu()
-	f.anchorOwner = nil
-	local screenW = UIParent:GetWidth() or 1920
-	local menuW = f:GetWidth() or QUICK_MENU_MIN_WIDTH
-	local openDown = true
-	local flipX = false
-	local anchor
-	local button = M.minimapButton
-	if anchorTo then
-		f.anchorOwner = anchorTo
-		anchor = anchorTo
-	elseif button then
-		anchor = Minimap or button
-		local cy = select(2, button:GetCenter())
-		openDown = not (cy and cy < QUICK_MENU_HEIGHT + 40)
-	else
-		anchor = f.owner or UIParent
-	end
-	if anchor ~= UIParent then
-		local ax, ay = anchor:GetCenter()
-		flipX = (ax and ax > screenW / 2) and true or false
-		if anchorTo then
-			local aw = (anchor:GetWidth() or 0) / 2
-			local ah = (anchor:GetHeight() or 0) / 2
-			local spaceUp = (ay or 0) + ah + 6
-			local spaceDown = (UIParent:GetHeight() or 1080) - ((ay or 0) - ah) + 6
-			local need = math.min(QUICK_MENU_HEIGHT, UIParent:GetHeight() or QUICK_MENU_HEIGHT) + 12
-			openDown = spaceDown >= need or spaceDown >= spaceUp
-		end
-	end
-	f:ClearAllPoints()
-	if anchor == UIParent then
-		local x = anchor:GetLeft() or 0
-		f:SetPoint(x + menuW / 2 < screenW / 2 and "TOPLEFT" or "TOPRIGHT", anchor, x + menuW / 2 < screenW / 2 and "TOPLEFT" or "TOPRIGHT", x + menuW / 2 < screenW / 2 and 12 or -12, -12)
-		f:Show()
-		return
-	end
-	if flipX then
-		f:SetPoint(openDown and "TOPRIGHT" or "BOTTOMRIGHT", anchor, "TOPLEFT", -10, openDown and 6 or -6)
-	else
-		f:SetPoint(openDown and "TOPLEFT" or "BOTTOMLEFT", anchor, "TOPRIGHT", 10, openDown and 6 or -6)
-	end
+	f.anchorOwner = anchorTo
+	M:PlaceQuickMenu(f)
 	f:Show()
 end
 
@@ -1372,6 +1330,7 @@ function mod:DeleteCurrentClass()
 end
 
 function mod:BuildOptions(p)
+	local label = M.MouseIcon("L") .. "  " .. L["Switch talents"]
 	local hint = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -30)
 	hint:SetWidth((p:GetWidth() or 444) - 24)
@@ -1389,31 +1348,40 @@ function mod:BuildOptions(p)
 
 	local buttonWidth = (p:GetWidth() or 444) - 24
 
+	local switcher = M.MakeFlatButton(p, buttonWidth, 26, label, function(self)
+		if M._minimapContext then
+			M._minimapContext(self)
+		end
+	end)
+	switcher:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
+	p.switcher = switcher
+	p.switcherLabel = label
+
 	local saveOne = M.MakeFlatButton(p, buttonWidth, 26, L["Save current specialization"], function()
 		self:StartSave()
 	end)
-	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
+	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
 
 	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
 	end)
-	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
+	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
 
 	local del = M.MakeFlatDangerButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
-	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
+	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -186)
 
-	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -186)
-	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, 0)
+	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
+	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -206)
+	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -edge, 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
 	status:SetTextColor(0.6, 0.6, 0.6)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -220)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -216)
 	p.listLabel = listLabel
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
@@ -1436,6 +1404,13 @@ function mod:RefreshOptions()
 	end
 	if p.autoApply then
 		p.autoApply:SetChecked(self:IsAutoApplyAllowed())
+	end
+	if p.switcher then
+		p.switcher:SetShown(M._minimapContext ~= nil)
+		local label = p.switcher:GetFontString()
+		if label and p.switcherLabel then
+			label:SetText(p.switcherLabel)
+		end
 	end
 	local hero = HeroTreeID()
 	local spec = SpecID()
