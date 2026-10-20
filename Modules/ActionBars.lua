@@ -1101,6 +1101,7 @@ function mod:GetQuickMenu()
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetFrameLevel(9000)
 	f:SetSize(QUICK_MENU_MIN_WIDTH, QUICK_MENU_HEIGHT)
+	f.menuHeight = QUICK_MENU_HEIGHT
 	local setColors = M.MakeFlatSkin(f, 1)
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarQuickMenu")
@@ -1145,7 +1146,6 @@ function mod:RefreshQuickMenu()
 	end
 
 	f:SetWidth(math.min(math.max(maxText + QUICK_MENU_PAD, QUICK_MENU_MIN_WIDTH), QUICK_MENU_MAX_WIDTH))
-	self.quickMenuWidth = f:GetWidth()
 	if f.scrollbar then
 		f.scrollbar:Update()
 	end
@@ -1284,9 +1284,10 @@ end
 function mod:ShowQuickMenu(anchorTo)
 	local f = self:GetQuickMenu()
 	self:RefreshQuickMenu()
-	f.anchorOwner = anchorTo
-	M:PlaceQuickMenu(f, nil, anchorTo)
-	f:Show()
+	M:PlaceQuickMenu(f, anchorTo)
+	if f:IsShown() and f.scrollbar then
+		f.scrollbar:Update()
+	end
 end
 
 function mod:HideQuickMenu()
@@ -1300,11 +1301,6 @@ function mod:OnGlobalMouseDown()
 	if not f or not f:IsShown() then
 		return
 	end
-	local owner = f.anchorOwner
-	f.anchorOwner = nil
-	if owner and owner:IsVisible() and owner:IsMouseOver() then
-		return
-	end
 	if f:IsMouseOver() then
 		return
 	end
@@ -1312,11 +1308,16 @@ function mod:OnGlobalMouseDown()
 	if button and button:IsMouseOver() then
 		return
 	end
+	local p = self.optionsFrame
+	if p and p:IsVisible() and p:IsMouseOver() then
+		return
+	end
 	self:HideQuickMenu()
 end
 
 function mod:ToggleQuickMenu(anchorTo)
-	if self.quickMenu and self.quickMenu:IsShown() then
+	local f = self.quickMenu
+	if anchorTo == "minimap" and f and f:IsShown() then
 		self:HideQuickMenu()
 		return
 	end
@@ -1375,9 +1376,9 @@ function mod:BuildOptions(p)
 	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -210)
 	p.listLabel = listLabel
 
-	local switcher = M.MakeFlatButton(p, 132, 22, label, function(self)
+	local switcher = M.MakeFlatButton(p, 132, 22, label, function()
 		if M._minimapContext then
-			M._minimapContext(self)
+			M._minimapContext("panel")
 		end
 	end)
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -207)

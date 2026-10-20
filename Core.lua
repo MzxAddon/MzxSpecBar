@@ -857,115 +857,77 @@ function M:SetMinimapContextHandler(fn, hideFn)
 	self._minimapContextHide = hideFn
 end
 
--- 菜单／右键弹层的定位模型：属主区域（设置窗或小地图按钮）→ 四向剩余空间 → 实际坐标
-local QUICK_MENU_HEIGHT = 420
-local QUICK_MENU_GAP = 12
+-- 菜单定位：小地图入口照抄发布版算法，设置面板入口固定贴窗体右侧（放不下改左侧）
+local QUICK_MENU_GAP = 10
 
-function M:GetMenuOwnerRect(menu, anchorTo)
-	local b = self.minimapButton
-	local r = self.minimapButtonRadius or 0
-	local function buttonRect()
-		if b then
-			local bx, by = b:GetCenter()
-			if bx and by then
-				return bx - r, bx + r, by + r, by - r
-			end
+function M:PlaceMinimapQuickMenu(menu)
+	local button = self.minimapButton
+	if not button then
+		return false
+	end
+	local cx, cy = button:GetCenter()
+	if not (cx and cy) then
+		return false
+	end
+	menu:SetHeight(math.min(menu.menuHeight or menu:GetHeight() or 420, UIParent:GetHeight() or 1080))
+	local uiWidth = UIParent:GetWidth() or 1920
+	local menuH = menu:GetHeight() or 0
+	local openDown = not (cy < menuH + 40)
+	local anchor = Minimap or button
+	menu:ClearAllPoints()
+	if cx < uiWidth / 2 then
+		if openDown then
+			menu:SetPoint("TOPLEFT", anchor, "TOPRIGHT", QUICK_MENU_GAP, -6)
+		else
+			menu:SetPoint("BOTTOMLEFT", anchor, "TOPRIGHT", QUICK_MENU_GAP, 6)
+		end
+	else
+		if openDown then
+			menu:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -QUICK_MENU_GAP, -6)
+		else
+			menu:SetPoint("BOTTOMRIGHT", anchor, "TOPLEFT", -QUICK_MENU_GAP, 6)
 		end
 	end
-	if anchorTo and b then
-		local left, right, top, bottom = buttonRect()
-		if left then
-			return left, right, top, bottom
-		end
-	end
+	return true
+end
+
+function M:PlacePanelQuickMenu(menu)
 	local f = self.configFrame
-	if f and f:IsShown() then
-		local left, right, top, bottom = f:GetLeft(), f:GetRight(), f:GetTop(), f:GetBottom()
-		if left and right and top and bottom then
-			return left, right, top, bottom
-		end
+	if not f or not f:IsShown() then
+		return false
 	end
-	local left, right, top, bottom = buttonRect()
-	if left then
-		return left, right, top, bottom
+	local left, right = f:GetLeft(), f:GetRight()
+	if not (left and right) then
+		return false
 	end
-	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
-	local menuW = menu:GetWidth() or 236
-	local menuH = math.min(menu:GetHeight() or QUICK_MENU_HEIGHT, screenH)
-	return (screenW - menuW) / 2, (screenW + menuW) / 2, screenH / 2, screenH / 2
+	local menuW = menu:GetWidth() or 0
+	local screenW = UIParent:GetWidth() or 1920
+	local screenH = UIParent:GetHeight() or 1080
+	menu:SetHeight(math.min(f:GetHeight() or 544, screenH))
+	menu:ClearAllPoints()
+	if right + QUICK_MENU_GAP + menuW <= screenW then
+		menu:SetPoint("TOPLEFT", f, "TOPRIGHT", QUICK_MENU_GAP, 0)
+	else
+		menu:SetPoint("TOPRIGHT", f, "TOPLEFT", -QUICK_MENU_GAP, 0)
+	end
+	return true
 end
 
-function M:GetMenuLayout(menu, anchorTo)
-	local menuW = (menu and menu:GetWidth()) or self.quickMenuWidth or 236
-	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
-	local menuH = math.min((menu and menu:GetHeight()) or QUICK_MENU_HEIGHT, screenH)
-	local left, right, top, bottom = self:GetMenuOwnerRect(menu, anchorTo)
-	local gap = QUICK_MENU_GAP
-	local spaceRight = math.max(screenW - right - gap, 0)
-	local spaceLeft = math.max(left - gap, 0)
-	local spaceBelow = math.max(bottom - gap, 0)
-	local spaceAbove = math.max(screenH - top - gap, 0)
-	return {
-		width = menuW,
-		height = menuH,
-		left = left,
-		right = right,
-		top = top,
-		bottom = bottom,
-		spaceRight = spaceRight,
-		spaceLeft = spaceLeft,
-		spaceBelow = spaceBelow,
-		spaceAbove = spaceAbove,
-		flipX = spaceRight >= menuW or spaceRight >= spaceLeft,
-		flipY = spaceBelow >= menuH or spaceBelow >= spaceAbove,
-	}
-end
-
-function M:PlaceQuickMenu(menu, layout, anchorTo)
+function M:PlaceQuickMenu(menu, anchorTo)
 	if not menu then
 		return
 	end
-	layout = layout or self:GetMenuLayout(menu, anchorTo)
-	local menuW = menu:GetWidth() or layout.width
-	local menuH = menu:GetHeight() or layout.height
-	local gap = QUICK_MENU_GAP
-	local fitRight = layout.spaceRight >= menuW
-	local fitLeft = layout.spaceLeft >= menuW
-	local fitBelow = layout.spaceBelow >= menuH
-	local fitAbove = layout.spaceAbove >= menuH
-	local ax, ay
-	local side = layout.flipX and "right" or "left"
-	local vertical = layout.flipY and "below" or "above"
-	if (side == "right" and not fitRight) or (side == "left" and not fitLeft) then
-		if fitRight then
-			side = "right"
-		elseif fitLeft then
-			side = "left"
-		end
-	end
-	if (vertical == "below" and not fitBelow) or (vertical == "above" and not fitAbove) then
-		if fitBelow then
-			vertical = "below"
-		elseif fitAbove then
-			vertical = "above"
-		end
-	end
-	if side == "right" then
-		ax = layout.right + gap
-	else
-		ax = layout.left - menuW - gap
-	end
-	if vertical == "below" then
-		ay = layout.bottom - menuH - gap
-	else
-		ay = layout.top + gap
-	end
-	local screenW, screenH = UIParent:GetWidth() or 1920, UIParent:GetHeight() or 1080
-	ax = math.max(0, math.min(screenW - menuW, ax))
-	ay = math.max(0, math.min(screenH - menuH, ay))
 	menu:SetFrameLevel(math.min((self.configLevel or CONFIG_LEVEL) + 12, CONFIG_LEVEL_MAX))
-	menu:ClearAllPoints()
-	menu:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", ax, ay + menuH)
+	if anchorTo == "minimap" then
+		if not self:PlaceMinimapQuickMenu(menu) then
+			return
+		end
+	else
+		if not self:PlacePanelQuickMenu(menu) then
+			return
+		end
+	end
+	menu:Show()
 end
 
 local MINIMAP_ICON = "Interface\\AddOns\\MzxSpecBar\\Textures\\icon.tga"
@@ -1086,7 +1048,7 @@ function M:CreateMinimapButton()
 	b:SetScript("OnClick", function(_, button)
 		if button == "RightButton" then
 			if M._minimapContext then
-				M._minimapContext(M.minimapButton)
+				M._minimapContext("minimap")
 			end
 		else
 			M:ToggleConfig()
