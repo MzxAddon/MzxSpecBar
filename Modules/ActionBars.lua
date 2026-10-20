@@ -1545,10 +1545,6 @@ function mod:RefreshOptions()
 end
 
 function mod:ApplySpec(specID, heroID)
-	if InCombatLockdown() then
-		M.Print(L["Action bars cannot be changed in combat"])
-		return
-	end
 	specID = AsID(specID)
 	heroID = AsID(heroID)
 	if not self:LayoutFor(ClassKey(), specID, heroID) then
@@ -1556,13 +1552,12 @@ function mod:ApplySpec(specID, heroID)
 		return
 	end
 	if SpecID() == specID then
-		self:ApplyLayoutFor(specID, heroID, false)
 		return
 	end
 	if self.pendingSpec then
 		return
 	end
-	self.pendingSpec = { specID = specID, heroID = heroID }
+	self.pendingSpec = specID
 	if not SwitchSpecialization(specID) then
 		self.pendingSpec = nil
 		M.Print(L["Could not switch specialization"])
@@ -1574,17 +1569,17 @@ function mod:ApplySpec(specID, heroID)
 			if not pending then
 				return
 			end
-			if SpecID() ~= pending.specID then
+			if SpecID() ~= pending then
 				if delay > 0.3 then
-					waitForSwitch(0.35)
+					self.pendingSpec = nil
+					M.Print(L["Could not switch specialization"])
 					return
 				end
-				self.pendingSpec = nil
-				M.Print(L["Could not switch specialization"])
+				waitForSwitch(0.35)
 				return
 			end
 			self.pendingSpec = nil
-			self:ApplyLayoutFor(pending.specID, pending.heroID, false)
+			self:RefreshOptions()
 		end)
 	end
 	waitForSwitch(0.25)
