@@ -1284,6 +1284,7 @@ end
 function mod:ShowQuickMenu(anchorTo)
 	local f = self:GetQuickMenu()
 	self:RefreshQuickMenu()
+	f.anchorSource = anchorTo
 	M:PlaceQuickMenu(f, anchorTo)
 	if f:IsShown() and f.scrollbar then
 		f.scrollbar:Update()
@@ -1301,6 +1302,9 @@ function mod:OnGlobalMouseDown()
 	if not f or not f:IsShown() then
 		return
 	end
+	if f.anchorSource == "panel" then
+		return
+	end
 	if f:IsMouseOver() then
 		return
 	end
@@ -1308,16 +1312,12 @@ function mod:OnGlobalMouseDown()
 	if button and button:IsMouseOver() then
 		return
 	end
-	local p = self.optionsFrame
-	if p and p:IsVisible() and p:IsMouseOver() then
-		return
-	end
 	self:HideQuickMenu()
 end
 
 function mod:ToggleQuickMenu(anchorTo)
 	local f = self.quickMenu
-	if anchorTo == "minimap" and f and f:IsShown() then
+	if f and f:IsShown() then
 		self:HideQuickMenu()
 		return
 	end
