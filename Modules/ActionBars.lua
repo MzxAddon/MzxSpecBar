@@ -1389,11 +1389,11 @@ function mod:BuildOptions(p)
 	longest = math.max(longest, MeasureText(specName))
 	local switcherHeight = M.LIST_ROW_TEXT_BLOCK_HEIGHT
 	local switcherWidth = math.floor(longest + switcherHeight + 16)
-	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, switcherHeight, specName, switcherHeight - 2, function()
+	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, switcherHeight, specName, switcherHeight - 4, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
-	end, { dock = true })
+	end, { dock = true, alt = true })
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -204)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
@@ -1413,8 +1413,8 @@ function mod:BuildOptions(p)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -250)
-	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 62)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -230)
+	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 44)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
 

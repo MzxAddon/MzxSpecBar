@@ -216,6 +216,14 @@ local FLAT_BTN = {
 	disabled = { bg = { 0.12, 0.12, 0.14, 0.70 }, text = { 0.45, 0.45, 0.48 } },
 }
 
+local FLAT_BTN_ALT = {
+	normal = { bg = { 0.25, 0.27, 0.31, 0.92 }, text = { 0.95, 0.95, 0.97 } },
+	hover = { bg = { 0.33, 0.35, 0.40, 0.95 }, text = { 1, 1, 1 } },
+	pushed = { bg = { 0.19, 0.21, 0.24, 0.95 }, text = { 1, 0.82, 0.2 } },
+	selected = { bg = { 0.30, 0.25, 0.10, 0.95 }, text = { 1, 0.82, 0.2 } },
+	disabled = { bg = { 0.17, 0.18, 0.21, 0.70 }, text = { 0.45, 0.45, 0.48 } },
+}
+
 local FLAT_BTN_DANGER = {
 	normal = { bg = { 0.29, 0.08, 0.08, 0.92 }, text = { 1.00, 0.42, 0.38 } },
 	hover = { bg = { 0.42, 0.12, 0.12, 0.95 }, text = { 1.00, 0.60, 0.55 } },
@@ -229,7 +237,12 @@ function M.ApplyFlatButtonVisual(b)
 	if b.IsEnabled then
 		enabled = b:IsEnabled()
 	end
-	local palette = b.danger and FLAT_BTN_DANGER or FLAT_BTN
+	local palette = FLAT_BTN
+	if b.danger then
+		palette = FLAT_BTN_DANGER
+	elseif b.alt then
+		palette = FLAT_BTN_ALT
+	end
 	local style
 	if not enabled then
 		style = palette.disabled
@@ -321,7 +334,8 @@ function M.SetButtonIcon(b, texPath, iconSize)
 end
 
 -- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
--- opts.dock = true 时图标贴左/上/下内侧边缘（间距 1px），高度取按钮高 - 2
+-- opts.dock = true 时图标贴左/上/下内侧边缘（间距 opts.iconPad，默认 2），高度取按钮高 - 2*pad
+-- opts.alt = true 时用中性偏亮的 FLAT_BTN_ALT 配色（与普通按钮区分）
 function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	opts = opts or {}
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
@@ -331,9 +345,12 @@ function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	b.icon = tex
 	b.iconSize = iconSize
 	b.iconGap = 6
+	if opts.alt then
+		b.alt = true
+	end
 	if opts.dock then
 		b.iconDock = true
-		b.iconPad = opts.iconPad or 1
+		b.iconPad = opts.iconPad or 2
 		b:HookScript("OnSizeChanged", function(self)
 			M.LayoutIconTextButton(self)
 		end)
@@ -353,7 +370,7 @@ function M.LayoutIconTextButton(b)
 	fs:SetJustifyH("CENTER")
 	fs:SetJustifyV("MIDDLE")
 	if b.iconDock and b.icon then
-		local pad = b.iconPad or 1
+		local pad = b.iconPad or 2
 		local hole = b:GetHeight() - pad * 2
 		b.icon:ClearAllPoints()
 		b.icon:SetSize(hole, hole)
