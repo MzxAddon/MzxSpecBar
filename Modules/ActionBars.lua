@@ -1364,7 +1364,7 @@ function mod:BuildOptions(p)
 	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -196)
+	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -186)
 	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -(p:GetWidth() or 444) + buttonWidth + 12, 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
@@ -1372,7 +1372,7 @@ function mod:BuildOptions(p)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -196)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -212)
 	p.listLabel = listLabel
 
 	local switcher = M.MakeFlatButton(p, 132, 22, label, function(self)
@@ -1380,12 +1380,12 @@ function mod:BuildOptions(p)
 			M._minimapContext(self)
 		end
 	end)
-	switcher:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -190)
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -209)
 	p.switcher = switcher
 	p.switcherLabel = label
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -222)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -238)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 66)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
