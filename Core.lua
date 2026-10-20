@@ -321,7 +321,9 @@ function M.SetButtonIcon(b, texPath, iconSize)
 end
 
 -- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
-function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick)
+-- opts.dock = true 时图标贴左/上/下内侧边缘（间距 1px），高度取按钮高 - 2
+function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
+	opts = opts or {}
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
 	local tex = b:CreateTexture(nil, "ARTWORK")
 	tex:SetSize(iconSize, iconSize)
@@ -329,6 +331,13 @@ function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick)
 	b.icon = tex
 	b.iconSize = iconSize
 	b.iconGap = 6
+	if opts.dock then
+		b.iconDock = true
+		b.iconPad = opts.iconPad or 1
+		b:HookScript("OnSizeChanged", function(self)
+			M.LayoutIconTextButton(self)
+		end)
+	end
 	M.LayoutIconTextButton(b)
 	M.ApplyFlatButtonVisual(b)
 	return b
@@ -343,6 +352,17 @@ function M.LayoutIconTextButton(b)
 	fs:ClearAllPoints()
 	fs:SetJustifyH("CENTER")
 	fs:SetJustifyV("MIDDLE")
+	if b.iconDock and b.icon then
+		local pad = b.iconPad or 1
+		local hole = b:GetHeight() - pad * 2
+		b.icon:ClearAllPoints()
+		b.icon:SetSize(hole, hole)
+		b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", pad, -pad)
+		fs:ClearAllPoints()
+		fs:SetPoint("LEFT", b.icon, "RIGHT", pad * 2, 0)
+		fs:SetPoint("RIGHT", b, "RIGHT", -pad * 2, 0)
+		return
+	end
 	local shift = (b.icon and b.iconSize) and (b.iconSize + (b.iconGap or 6)) / 2 or 0
 	fs:SetPoint("CENTER", b, "CENTER", shift, 0)
 	if b.icon then
@@ -450,6 +470,8 @@ end
 -- 返回 row：row.icon / row.name / row.sub / row.state
 -- row:SetSelected(on) 金色调 + 2px 金色左强调条；row:SetStripe(on)
 M.LIST_ROW_HEIGHT = 40
+-- 列表行里两行文字块（name 顶边 6 + 行距 + sub 高 + 底留白 6）的高度，供需要与之对齐的控件引用
+M.LIST_ROW_TEXT_BLOCK_HEIGHT = 28
 function M.MakeListRow(parent, opts)
 	opts = opts or {}
 	local row = CreateFrame("Button", nil, parent)

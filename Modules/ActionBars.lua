@@ -1387,13 +1387,14 @@ function mod:BuildOptions(p)
 		end
 	end
 	longest = math.max(longest, MeasureText(specName))
-	local switcherWidth = math.floor(longest + 24 + 6 + 16)
-	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, 36, specName, 24, function()
+	local switcherHeight = M.LIST_ROW_TEXT_BLOCK_HEIGHT
+	local switcherWidth = math.floor(longest + switcherHeight + 16)
+	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, switcherHeight, specName, switcherHeight - 2, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
-	end)
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -218)
+	end, { dock = true })
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -220)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
 	switcher:SetScript("OnEnter", function(b)
