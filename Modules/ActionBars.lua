@@ -1379,13 +1379,12 @@ function mod:BuildOptions(p)
 	local switcherHeight = M.LIST_ROW_TEXT_BLOCK_HEIGHT
 	local iconPad, iconBorder = 2, 2
 	local iconH = switcherHeight - iconPad * 2
-	local iconW = math.floor(iconH * 1.4 + 0.5)
-	local switcherWidth = math.floor(longest + (iconPad + iconW + iconPad * 2) + iconPad * 2)
+	local switcherWidth = math.floor(longest + (iconPad + iconH + iconPad * 2) + iconPad * 2)
 	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, switcherHeight, specName, iconH, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
-	end, { dock = true, alt = true, iconW = iconW, iconBorder = iconBorder })
+	end, { dock = true, alt = true, iconBorder = iconBorder })
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -204)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)

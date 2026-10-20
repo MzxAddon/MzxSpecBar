@@ -346,8 +346,9 @@ end
 
 -- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
 -- opts.dock = true 时图标贴左/上/下内侧边缘（间距 opts.iconPad，默认 2），高度取按钮高 - 2*pad
--- opts.iconW 指定图标宽（默认与高相等＝正方形）；opts.iconBorder 在图标外围加一圈该厚度的边框
+-- opts.iconBorder 在图标外围加一圈该厚度的边框
 -- opts.alt = true 时用品牌紫的 FLAT_BTN_ALT 配色（与普通按钮区分）
+-- 图标恒为正方形（项目约束），这里不提供任何改变宽高比的入口
 function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	opts = opts or {}
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
@@ -365,9 +366,6 @@ function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	b.iconGap = 6
 	if opts.alt then
 		b.alt = true
-	end
-	if opts.iconW then
-		b.iconW = opts.iconW
 	end
 	if opts.dock then
 		b.iconDock = true
@@ -393,17 +391,16 @@ function M.LayoutIconTextButton(b)
 	if b.iconDock and b.icon then
 		local pad = b.iconPad or 2
 		local ih = b:GetHeight() - pad * 2
-		local iw = b.iconW or ih
 		b.icon:ClearAllPoints()
-		b.icon:SetSize(iw, ih)
+		b.icon:SetSize(ih, ih)
 		b.icon:SetPoint("TOPLEFT", b, "TOPLEFT", pad, -pad)
 		if b.iconFrame then
 			local bw = b.iconBorderPad or 2
 			b.iconFrame:ClearAllPoints()
-			b.iconFrame:SetSize(iw + bw * 2, ih + bw * 2)
+			b.iconFrame:SetSize(ih + bw * 2, ih + bw * 2)
 			b.iconFrame:SetPoint("CENTER", b.icon, "CENTER", 0, 0)
 		end
-		local textLeft = (b.iconFrame and (b.iconBorderPad or 2) or 0)
+		local textLeft = b.iconFrame and (b.iconBorderPad or 2) or 0
 		fs:ClearAllPoints()
 		fs:SetPoint("LEFT", b.icon, "RIGHT", math.max(pad * 2, textLeft + pad), 0)
 		fs:SetPoint("RIGHT", b, "RIGHT", -pad * 2, 0)
