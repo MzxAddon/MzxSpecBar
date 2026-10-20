@@ -153,14 +153,20 @@ jobs:
             exit 0
           fi
 
+          LIST_CODE=$(curl -s -o cf-files.json -w '%{http_code}' -H "X-Api-Token: $CF_API_TOKEN" \
+            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files" || true)
+          echo "cf file list HTTP ${LIST_CODE:-none}"
+          echo "cf file list body: $(head -c 1200 cf-files.json 2>/dev/null || true)"
+
           if [ -n "${CLEANUP_IDS:-}" ]; then
             echo "只做清理，不上传：$CLEANUP_IDS"
             for id in ${CLEANUP_IDS//,/ }; do
               if [ -z "$id" ]; then continue; fi
               echo "删除 CurseForge 文件 id=$id"
-              curl -s -o /dev/null -w "delete HTTP %{http_code}\n" -X DELETE \
+              curl -sL -o cf-del.json -w "delete HTTP %{http_code} redirect=%{redirect_url} final=%{url_effective}\n" -X DELETE \
                 "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files/$id" \
                 -H "X-Api-Token: $CF_API_TOKEN" || true
+              echo "delete body: $(head -c 300 cf-del.json 2>/dev/null || true)"
             done
             exit 0
           fi
@@ -222,8 +228,4 @@ jobs:
 
           # 同名文件自检：CurseForge 每次上传都会新建一个文件条目。
           # 重跑同一版本号会留下重复条目，靠 cleanup_file_ids 输入显式删除多余的。
-          # 这里只把列表接口的可用性打出来，方便排查。
-          LIST_CODE=$(curl -s -o cf-files.json -w '%{http_code}' -H "X-Api-Token: $CF_API_TOKEN" \
-            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files" || true)
-          echo "cf file list HTTP ${LIST_CODE:-none} body: $(head -c 300 cf-files.json 2>/dev/null || true)"
           echo "CurseForge 上传完成"
