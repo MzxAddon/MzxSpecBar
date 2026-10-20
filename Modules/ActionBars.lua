@@ -1336,28 +1336,32 @@ function mod:BuildOptions(p)
 	p.autoApply = auto
 
 	local buttonWidth = (p:GetWidth() or 444) - 24
+	local switcherWidth = math.floor((p:GetWidth() or 446) / 4)
 
 	local saveOne = M.MakeFlatButton(p, buttonWidth, 26, L["Save current specialization"], function()
 		self:StartSave()
 	end)
 	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
+	saveOne:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -86)
 	M.SetRowButtonIcon(saveOne, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-save.tga", 18)
 
 	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
 	end)
 	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
+	apply:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -116)
 	M.SetRowButtonIcon(apply, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-apply.tga", 18)
 
 	local del = M.MakeFlatDangerButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
 	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
+	del:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -146)
 	M.SetRowButtonIcon(del, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-delete.tga", 18)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -190)
-	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -(p:GetWidth() or 444) + buttonWidth + 12, 0)
+	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -(12 + switcherWidth + 8), 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
 	status:SetTextColor(0.6, 0.6, 0.6)
@@ -1368,24 +1372,15 @@ function mod:BuildOptions(p)
 	p.listLabel = listLabel
 
 	local specName, specIcon = SpecInfo(SpecID())
-	local longest = 0
-	for i = 1, NumSpecializations() do
-		local _, name = SpecInfoByIndex(i)
-		if type(name) == "string" then
-			longest = math.max(longest, MeasureText(name))
-		end
-	end
-	longest = math.max(longest, MeasureText(specName))
 	local switcherHeight = M.LIST_ROW_TEXT_BLOCK_HEIGHT
 	local iconPad, iconBorder = 2, 2
 	local iconH = switcherHeight - iconPad * 2
-	local switcherWidth = math.floor(longest + (iconPad + iconH + iconPad * 2) + iconPad * 2)
 	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, switcherHeight, specName, iconH, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
-	end, { dock = true, alt = true, iconBorder = iconBorder })
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -204)
+	end, { dock = true, alt = true, iconBorder = iconBorder, gradient = { from = { 1.00, 0.00, 0.85 }, to = { 0.53, 0.27, 0.93 } } })
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -13, -204)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
 	switcher:SetScript("OnEnter", function(b)

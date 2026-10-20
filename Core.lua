@@ -217,11 +217,11 @@ local FLAT_BTN = {
 }
 
 local FLAT_BTN_ALT = {
-	normal = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.22, 0.08, 0.32, 1 }, iconBorder = { 0.17, 0.05, 0.26, 1 }, text = { 0.96, 0.92, 1.00 } },
-	hover = { bg = { 0.53, 0.24, 0.68, 0.95 }, border = { 0.31, 0.12, 0.45, 1 }, iconBorder = { 0.24, 0.08, 0.36, 1 }, text = { 1, 1, 1 } },
-	pushed = { bg = { 0.32, 0.13, 0.43, 0.95 }, border = { 0.17, 0.06, 0.25, 1 }, iconBorder = { 0.12, 0.04, 0.19, 1 }, text = { 1, 0.86, 0.35 } },
-	selected = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.88, 0.45, 0.94, 1 }, iconBorder = { 0.88, 0.45, 0.94, 1 }, text = { 1, 1, 1 } },
-	disabled = { bg = { 0.24, 0.17, 0.28, 0.70 }, border = { 0.16, 0.11, 0.19, 1 }, iconBorder = { 0.13, 0.09, 0.15, 1 }, text = { 0.52, 0.48, 0.55 } },
+	normal = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.22, 0.08, 0.32, 1 }, iconBorder = { 0.17, 0.05, 0.26, 1 }, text = { 0.96, 0.92, 1.00 }, gradientTint = 1.00 },
+	hover = { bg = { 0.53, 0.24, 0.68, 0.95 }, border = { 0.31, 0.12, 0.45, 1 }, iconBorder = { 0.24, 0.08, 0.36, 1 }, text = { 1, 1, 1 }, gradientTint = 1.22 },
+	pushed = { bg = { 0.32, 0.13, 0.43, 0.95 }, border = { 0.17, 0.06, 0.25, 1 }, iconBorder = { 0.12, 0.04, 0.19, 1 }, text = { 1, 0.86, 0.35 }, gradientTint = 0.78 },
+	selected = { bg = { 0.42, 0.18, 0.55, 0.95 }, border = { 0.88, 0.45, 0.94, 1 }, iconBorder = { 0.88, 0.45, 0.94, 1 }, text = { 1, 1, 1 }, gradientTint = 1.00 },
+	disabled = { bg = { 0.24, 0.17, 0.28, 0.70 }, border = { 0.16, 0.11, 0.19, 1 }, iconBorder = { 0.13, 0.09, 0.15, 1 }, text = { 0.52, 0.48, 0.55 }, gradientTint = 0.55 },
 }
 
 local FLAT_BTN_DANGER = {
@@ -257,7 +257,14 @@ function M.ApplyFlatButtonVisual(b)
 	end
 	if b._setSkin then
 		local bd = style.border
-		if bd then
+		if b.gradientStrips then
+			if bd then
+				b._setSkin(bd[1], bd[2], bd[3], bd[4], 0, 0, 0, 0)
+			else
+				b._setSkin(0, 0, 0, 0, 0, 0, 0, 0)
+			end
+			M.PaintGradient(b, style.gradientTint or 1)
+		elseif bd then
 			b._setSkin(bd[1], bd[2], bd[3], bd[4], style.bg[1], style.bg[2], style.bg[3], style.bg[4])
 		else
 			b._setSkin(0, 0, 0, 0, style.bg[1], style.bg[2], style.bg[3], style.bg[4])
@@ -344,14 +351,73 @@ function M.SetButtonIcon(b, texPath, iconSize)
 	return tex
 end
 
+-- 水平渐变填充：把 frame 内部等分成若干竖条，颜色按 t 在 from→to 之间线性插值
+-- 竖条数量固定，宽度按容器宽实时重算（挂 OnSizeChanged），容器尺寸变化也能跟随
+M.GRADIENT_STRIPS = 24
+function M.MakeHorizontalGradient(frame, fromRGB, toRGB, inset)
+	local strips = {}
+	local n = M.GRADIENT_STRIPS
+	local pad = inset or 1
+	for i = 1, n do
+		local t = (i - 1) / (n - 1)
+		local s = frame:CreateTexture(nil, "BACKGROUND", nil, -7)
+		s:SetColorTexture(
+			fromRGB[1] + (toRGB[1] - fromRGB[1]) * t,
+			fromRGB[2] + (toRGB[2] - fromRGB[2]) * t,
+			fromRGB[3] + (toRGB[3] - fromRGB[3]) * t,
+			1
+		)
+		s:SetPoint("TOP")
+		s:SetPoint("BOTTOM")
+		strips[i] = s
+	end
+	local function layout()
+		local w = frame:GetWidth() - pad * 2
+		if w <= 0 then
+			return
+		end
+		local each = w / n
+		for i = 1, n do
+			local s = strips[i]
+			s:ClearAllPoints()
+			s:SetPoint("TOPLEFT", frame, "TOPLEFT", pad + (i - 1) * each, -pad)
+			s:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", pad + (i - 1) * each, pad)
+			s:SetWidth(each + 0.5)
+		end
+	end
+	layout()
+	frame:HookScript("OnSizeChanged", layout)
+	frame.gradientStrips = strips
+	frame.gradientLayout = layout
+	return strips
+end
+
+-- 按亮度系数重刷渐变竖条（悬停更亮、按下更暗、禁用更灰），保持 from→to 的色相走向
+function M.PaintGradient(frame, tint)
+	local g = frame._gradient
+	if not g or not frame.gradientStrips then
+		return
+	end
+	local n = M.GRADIENT_STRIPS
+	for i = 1, n do
+		local t = (i - 1) / (n - 1)
+		local r = (g.from[1] + (g.to[1] - g.from[1]) * t) * tint
+		local gg = (g.from[2] + (g.to[2] - g.from[2]) * t) * tint
+		local bb = (g.from[3] + (g.to[3] - g.from[3]) * t) * tint
+		frame.gradientStrips[i]:SetColorTexture(math.min(r, 1), math.min(gg, 1), math.min(bb, 1), 1)
+	end
+end
+
 -- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
 -- opts.dock = true 时图标贴左/上/下内侧边缘（间距 opts.iconPad，默认 2），高度取按钮高 - 2*pad
 -- opts.iconBorder 在图标外围加一圈该厚度的边框
 -- opts.alt = true 时用品牌紫的 FLAT_BTN_ALT 配色（与普通按钮区分）
+-- opts.gradient = { from = {r,g,b}, to = {r,g,b} } 时给按钮本体铺水平渐变（复用时优先于 alt 的纯色）
 -- 图标恒为正方形（项目约束），这里不提供任何改变宽高比的入口
 function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	opts = opts or {}
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
+	b._gradient = opts.gradient
 	if opts.iconBorder then
 		local frame = b:CreateTexture(nil, "ARTWORK", nil, -1)
 		frame:SetColorTexture(0, 0, 0, 1)
@@ -366,6 +432,9 @@ function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick, opts)
 	b.iconGap = 6
 	if opts.alt then
 		b.alt = true
+	end
+	if b._gradient then
+		M.MakeHorizontalGradient(b, b._gradient.from, b._gradient.to, 0)
 	end
 	if opts.dock then
 		b.iconDock = true
