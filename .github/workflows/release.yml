@@ -183,6 +183,26 @@ jobs:
           echo "metadata: $METADATA"
           printf '%s' "$METADATA" | jq -e . >/dev/null
 
+          ZIPNAME="MzxSpecBar-$VERSION.zip"
+          EXISTING_ID=$(curl -sf -H "X-Api-Token: $CF_API_TOKEN" \
+            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files" 2>/dev/null | \
+            jq -r --arg n "$ZIPNAME" '(if type=="array" then . else .data end) | map(select(.fileName==$n)) | .[0].id // empty' 2>/dev/null | head -1 || true)
+          if [ -n "${EXISTING_ID:-}" ]; then
+            echo "CurseForge 已存在同名文件 id=$EXISTING_ID，改为更新元数据（不重复上传）"
+            CODE=$(curl -sS -o cf-response.json -w '%{http_code}' -X PUT \
+              "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files/$EXISTING_ID" \
+              -H "X-Api-Token: $CF_API_TOKEN" \
+              -H "Content-Type: application/json" \
+              --data-binary "$METADATA" || true)
+            echo "CurseForge update -> HTTP $CODE"
+            if [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || [ "$CODE" = "204" ]; then
+              echo "已更新 CurseForge 文件元数据：$EXISTING_ID"
+              exit 0
+            fi
+            echo "更新响应内容：$(head -c 800 cf-response.json)"
+            exit 1
+          fi
+
           for attempt in 1 2 3; do
             CODE=$(curl -sS -o cf-response.json -w '%{http_code}' -X POST \
               "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file" \
