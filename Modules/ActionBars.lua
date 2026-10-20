@@ -1348,19 +1348,10 @@ function mod:BuildOptions(p)
 
 	local buttonWidth = (p:GetWidth() or 444) - 24
 
-	local switcher = M.MakeFlatButton(p, buttonWidth, 26, label, function(self)
-		if M._minimapContext then
-			M._minimapContext(self)
-		end
-	end)
-	switcher:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
-	p.switcher = switcher
-	p.switcherLabel = label
-
 	local saveOne = M.MakeFlatButton(p, buttonWidth, 26, L["Save current specialization"], function()
 		self:StartSave()
 	end)
-	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
+	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
 
 	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
@@ -1373,16 +1364,25 @@ function mod:BuildOptions(p)
 	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -186)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -206)
-	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -edge, 0)
+	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -196)
+	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -(p:GetWidth() or 444) + buttonWidth + 12, 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
 	status:SetTextColor(0.6, 0.6, 0.6)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -216)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -196)
 	p.listLabel = listLabel
+
+	local switcher = M.MakeFlatButton(p, buttonWidth, 26, label, function(self)
+		if M._minimapContext then
+			M._minimapContext(self)
+		end
+	end)
+	switcher:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -222)
+	p.switcher = switcher
+	p.switcherLabel = label
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
 	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -242)
