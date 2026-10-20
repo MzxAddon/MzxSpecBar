@@ -1357,7 +1357,7 @@ function mod:OnGlobalMouseDown()
 end
 
 function mod:ToggleQuickMenu(anchorTo)
-	if self.quickMenu and self.quickMenu:IsShown() then
+	if anchorTo ~= "panel" and self.quickMenu and self.quickMenu:IsShown() then
 		self:HideQuickMenu()
 		return
 	end
