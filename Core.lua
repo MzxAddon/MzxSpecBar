@@ -5,7 +5,7 @@ local M = CreateFrame("Frame")
 ns.M = M
 local L = ns.L
 
-M.version = "1.0.3"
+M.version = "1.0.4"
 M.moduleList = {}
 M.modules = {}
 
