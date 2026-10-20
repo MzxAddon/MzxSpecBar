@@ -320,6 +320,36 @@ function M.SetButtonIcon(b, texPath, iconSize)
 	return tex
 end
 
+-- 图标在左、文字在右的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
+function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick)
+	local b = M.MakeFlatButton(parent, w, h, text, onClick)
+	local tex = b:CreateTexture(nil, "ARTWORK")
+	tex:SetSize(iconSize, iconSize)
+	tex:SetPoint("LEFT", 8, 0)
+	b.icon = tex
+	local fs = b:GetFontString()
+	if fs then
+		fs:ClearAllPoints()
+		fs:SetJustifyV("MIDDLE")
+		fs:SetPoint("LEFT", tex, "RIGHT", 6, 0)
+		fs:SetPoint("RIGHT", b, "RIGHT", -8, 0)
+		fs:SetJustifyH("LEFT")
+	end
+	M.ApplyFlatButtonVisual(b)
+	return b
+end
+
+function M.SetIconTextButton(b, text, texPath)
+	local fs = b:GetFontString()
+	if fs then
+		fs:SetText(text or "")
+	end
+	if b.icon then
+		b.icon:SetTexture(texPath)
+	end
+	M.ApplyFlatButtonVisual(b)
+end
+
 function M.MakeCloseButton(parent)
 	local btn = CreateFrame("Button", nil, parent)
 	btn:SetSize(18, 18)

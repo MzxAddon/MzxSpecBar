@@ -1331,7 +1331,6 @@ function mod:DeleteCurrentClass()
 end
 
 function mod:BuildOptions(p)
-	local label = M.MouseIcon("L") .. "  " .. L["Switch talents"]
 	local hint = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
 	hint:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -30)
 	hint:SetWidth((p:GetWidth() or 444) - 24)
@@ -1373,20 +1372,36 @@ function mod:BuildOptions(p)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -210)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -218)
 	p.listLabel = listLabel
 
-	local switcher = M.MakeFlatButton(p, 132, 22, label, function()
+	local specName, specIcon = SpecInfo(SpecID())
+	local switcherWidth = math.min(math.max(132, math.floor(MeasureText(specName) + 42)), 200)
+	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, 30, specName, 20, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
 	end)
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -207)
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -215)
 	p.switcher = switcher
-	p.switcherLabel = label
+	M.SetIconTextButton(switcher, specName, specIcon)
+	switcher:SetScript("OnEnter", function(b)
+		b._hovered = true
+		M.ApplyFlatButtonVisual(b)
+		GameTooltip:SetOwner(b, "ANCHOR_NONE")
+		GameTooltip:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -4)
+		GameTooltip:SetText(M.BrandTitle(L["Switch talents"]), 1, 1, 1)
+		GameTooltip:Show()
+	end)
+	switcher:SetScript("OnLeave", function(b)
+		b._hovered = false
+		b._pushed = false
+		M.ApplyFlatButtonVisual(b)
+		GameTooltip:Hide()
+	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -242)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -250)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 62)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
@@ -1406,15 +1421,13 @@ function mod:RefreshOptions()
 	if p.autoApply then
 		p.autoApply:SetChecked(self:IsAutoApplyAllowed())
 	end
-	if p.switcher then
-		p.switcher:SetShown(M._minimapContext ~= nil)
-		local label = p.switcher:GetFontString()
-		if label and p.switcherLabel then
-			label:SetText(p.switcherLabel)
-		end
-	end
 	local hero = HeroTreeID()
 	local spec = SpecID()
+	if p.switcher then
+		p.switcher:SetShown(M._minimapContext ~= nil)
+		local name, icon = SpecInfo(spec)
+		M.SetIconTextButton(p.switcher, name, icon)
+	end
 	local has = self:LayoutFor(ClassKey(), spec, hero) and true or false
 	local state = has and L["Saved"] or L["Not saved"]
 	local dim = hero > 0 and HeroName(hero, spec) or L["Specialization"]
