@@ -13,6 +13,7 @@ M:RegisterModule(mod)
 
 M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")
 M:RegisterModuleEvent("TRAIT_CONFIG_UPDATED")
+M:RegisterModuleEvent("SPELLS_CHANGED")
 M:RegisterModuleEvent("GLOBAL_MOUSE_DOWN")
 
 local MIN_LEVEL = 10
@@ -1268,7 +1269,7 @@ function mod:ContinueLoadout()
 	end
 	self.pendingLoadout = nil
 	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
-	self:RefreshOptions()
+	self.awaitSpecRefresh = true
 end
 
 function mod:ShowQuickMenu(anchorTo)
@@ -1548,7 +1549,7 @@ function mod:ApplySpec(specID, heroID)
 				return
 			end
 			self.pendingSpec = nil
-			self:RefreshOptions()
+			self.awaitSpecRefresh = true
 		end)
 	end
 	waitForSwitch(0.25)
@@ -1569,6 +1570,11 @@ function mod:OnEvent(event, ...)
 		if self.pendingLoadout then
 			self.pendingLoadout = nil
 			self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
+			self.awaitSpecRefresh = true
+		end
+	elseif event == "SPELLS_CHANGED" then
+		if self.awaitSpecRefresh then
+			self.awaitSpecRefresh = nil
 			self:RefreshOptions()
 		end
 	elseif event == "GLOBAL_MOUSE_DOWN" then
