@@ -746,6 +746,11 @@ local function PutCursorInSlot(slot)
 	return false
 end
 
+local function SlotHasAction(slot)
+	local actionType = SlotActionInfo(slot)
+	return actionType ~= nil
+end
+
 local function ClearActionSlot(slot)
 	if type(PickupAction) == "function" then
 		pcall(PickupAction, slot)
@@ -821,38 +826,49 @@ function mod:ApplyLayout(layout)
 				end
 			end
 		end
-		for slot = 1, ACTION_SLOT_MAX do
-			ClearActionSlot(slot)
-		end
+		local want = {}
 		for _, entry in ipairs(plan) do
-			local live = macroLive[entry.slot]
-			local picked = false
-			if entry.action.t == "spell" then
-				picked = PickupSpellID(entry.action.id)
-			elseif entry.action.t == "item" then
-				picked = PickupItemID(entry.action.id)
-			elseif entry.action.t == "macro" then
-				picked = PickupMacroLive(entry.action, live)
-			end
-			local landed = false
-			if picked then
-				landed = PutCursorInSlot(entry.slot) and SlotMatches(entry.slot, entry.action, live and live.name)
-			end
-			ClearCursorSafe()
-			if landed then
-				placed = placed + 1
-			else
-				local actionType = entry.action.t
-				local bucket = "other"
-				if actionType == "macro" then
-					bucket = "macro"
-				elseif actionType == "spell" and not SpellKnown(entry.action.id) then
-					bucket = "spell"
-				elseif actionType == "item" and not ItemKnown(entry.action.id) then
-					bucket = "item"
+			want[entry.slot] = entry
+		end
+		for slot = 1, ACTION_SLOT_MAX do
+			local entry = want[slot]
+			if entry then
+				local live = macroLive[slot]
+				if not SlotMatches(slot, entry.action, live and live.name) then
+					ClearActionSlot(slot)
+					local picked = false
+					if entry.action.t == "spell" then
+						picked = PickupSpellID(entry.action.id)
+					elseif entry.action.t == "item" then
+						picked = PickupItemID(entry.action.id)
+					elseif entry.action.t == "macro" then
+						picked = PickupMacroLive(entry.action, live)
+					end
+					local landed = false
+					if picked then
+						landed = PutCursorInSlot(slot) and SlotMatches(slot, entry.action, live and live.name)
+					end
+					ClearCursorSafe()
+					if landed then
+						placed = placed + 1
+					else
+						local actionType = entry.action.t
+						local bucket = "other"
+						if actionType == "macro" then
+							bucket = "macro"
+						elseif actionType == "spell" and not SpellKnown(entry.action.id) then
+							bucket = "spell"
+						elseif actionType == "item" and not ItemKnown(entry.action.id) then
+							bucket = "item"
+						end
+						local list = missed[bucket]
+						list[#list + 1] = MissedEntry(slot, actionType, entry.action.id, entry.action.name)
+					end
+				else
+					placed = placed + 1
 				end
-				local list = missed[bucket]
-				list[#list + 1] = MissedEntry(entry.slot, actionType, entry.action.id, entry.action.name)
+			elseif SlotHasAction(slot) then
+				ClearActionSlot(slot)
 			end
 		end
 	end
