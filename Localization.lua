@@ -38,7 +38,6 @@ local en = {
 	"Delete saved data",
 	"Level %d is below the minimum (10)",
 	"Saved %d slots",
-	"Macro slots are restored by content; missing macros are created first",
 	"Applied %d slots",
 	"Applied %d pet actions",
 	"Created %d macros",

@@ -9,8 +9,20 @@ M.version = "1.0.3"
 M.moduleList = {}
 M.modules = {}
 
+local BRAND_NAME = "MzxSpecBar"
+local BRAND_COLORS = { "8845EC", "A037E9", "A435E8", "B32DE6", "BC26E5", "CB1EE3", "DD14E0", "EB0BDD", "FB04DA", "FF00D8" }
+local BRAND = ""
+for i = 1, #BRAND_NAME do
+	BRAND = BRAND .. "|cff" .. BRAND_COLORS[i] .. BRAND_NAME:sub(i, i) .. "|r"
+end
+M.Brand = BRAND
+
+M.BrandTitle = function(text)
+	return (tostring(text or ""):gsub(BRAND_NAME, BRAND))
+end
+
 local Print = function(msg)
-	DEFAULT_CHAT_FRAME:AddMessage("|cffffd200MzxSpecBar|r " .. tostring(msg))
+	DEFAULT_CHAT_FRAME:AddMessage(BRAND .. " " .. tostring(msg))
 end
 M.Print = Print
 
@@ -643,7 +655,7 @@ function M:CreateConfigFrame()
 	end)
 	f:SetScript("OnShow", function()
 		if f.title then
-			f.title:SetText(L["MzxSpecBar Settings"])
+			f.title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
 		end
 		M:RaiseConfigFrame()
 		M.SnapToPixelGrid(f)
@@ -671,7 +683,7 @@ function M:CreateConfigFrame()
 
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
 	title:SetPoint("LEFT", header, "LEFT", 12, 0)
-	title:SetText(L["MzxSpecBar Settings"])
+	title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
 	f.title = title
 
 	local close = M.MakeCloseButton(f)
@@ -945,7 +957,7 @@ function M:CreateMinimapButton()
 	b:SetScript("OnEnter", function()
 		GameTooltip:SetOwner(b, "ANCHOR_NONE")
 		GameTooltip:SetPoint("TOPLEFT", b, "BOTTOMLEFT", 0, -4)
-		GameTooltip:SetText(L["MzxSpecBar Settings"], 1, 1, 1)
+		GameTooltip:SetText(M.BrandTitle(L["MzxSpecBar Settings"]), 1, 1, 1)
 		GameTooltip:AddLine(M.MouseIcon("L") .. L["Open/close settings"], 0.8, 0.8, 0.8)
 		GameTooltip:AddLine(M.MouseIcon("R") .. L["Open the quick list"], 0.8, 0.8, 0.8)
 		GameTooltip:Show()

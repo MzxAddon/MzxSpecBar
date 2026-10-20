@@ -996,21 +996,12 @@ function mod:StartSave()
 		count = count + 1
 	end
 	StoreSnapshot(ClassKey(), SpecID(), HeroTreeID(), snapshot)
-	local macroCount = 0
-	for _, action in pairs(slotBar.slots) do
-		if action.t == "macro" then
-			macroCount = macroCount + 1
-		end
-	end
+	M.Print(L["Saved %d slots"]:format(count))
 	local warnings = SkipCountWarn(skipped)
 	if #warnings > 0 then
 		self:Warn(warnings)
 	else
 		self.warnings = nil
-	end
-	M.Print(L["Saved %d slots"]:format(count))
-	if macroCount > 0 then
-		M.Print(L["Macro slots are restored by content; missing macros are created first"])
 	end
 	self:RefreshOptions()
 end

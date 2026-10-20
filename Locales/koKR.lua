@@ -27,7 +27,6 @@ ns.RegisterLocale("koKR", {
 	["Delete saved data"] = "저장된 데이터 삭제",
 	["Level %d is below the minimum (10)"] = "레벨 %d은(는) 최소 레벨(10)보다 낮습니다",
 	["Saved %d slots"] = "슬롯 %d개 저장",
-	["Macro slots are restored by content; missing macros are created first"] = "매크로 슬롯은 내용으로 복원되며, 없는 매크로는 먼저 생성됩니다",
 	["Applied %d slots"] = "슬롯 %d개 적용",
 	["Applied %d pet actions"] = "소수 주문 %d개 적용",
 	["Created %d macros"] = "매크로 %d개 생성",

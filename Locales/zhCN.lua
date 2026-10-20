@@ -27,7 +27,6 @@ ns.RegisterLocale("zhCN", {
 	["Delete saved data"] = "删除已保存数据",
 	["Level %d is below the minimum (10)"] = "等级 %d 低于最低等级 10，不参与",
 	["Saved %d slots"] = "已保存 %d 个动作条槽位",
-	["Macro slots are restored by content; missing macros are created first"] = "宏槽位按内容匹配恢复：缺失的宏（通用/角色）会先创建再排列",
 	["Applied %d slots"] = "已应用 %d 个动作条槽位",
 	["Applied %d pet actions"] = "已应用 %d 个宠物技能",
 	["Created %d macros"] = "已创建 %d 个宏",

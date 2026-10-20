@@ -27,7 +27,6 @@ ns.RegisterLocale("zhTW", {
 	["Delete saved data"] = "刪除已儲存資料",
 	["Level %d is below the minimum (10)"] = "等級 %d 低於最低等級 10，不參與",
 	["Saved %d slots"] = "已儲存 %d 個動作條欄位",
-	["Macro slots are restored by content; missing macros are created first"] = "宏欄位按內容比對還原：缺少的宏（通用/角色）會先建立再排列",
 	["Applied %d slots"] = "已套用 %d 個動作條欄位",
 	["Applied %d pet actions"] = "已套用 %d 個寵物技能",
 	["Created %d macros"] = "已建立 %d 個宏",

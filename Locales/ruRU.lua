@@ -27,7 +27,6 @@ ns.RegisterLocale("ruRU", {
 	["Delete saved data"] = "Удалить сохранённые данные",
 	["Level %d is below the minimum (10)"] = "Уровень %d ниже минимального (10)",
 	["Saved %d slots"] = "Сохранено ячеек: %d",
-	["Macro slots are restored by content; missing macros are created first"] = "Ячейки макросов восстанавливаются по содержимому; отсутствующие макросы сначала создаются",
 	["Applied %d slots"] = "Применено ячеек: %d",
 	["Applied %d pet actions"] = "Применено действий питомца: %d",
 	["Created %d macros"] = "Создано макросов: %d",

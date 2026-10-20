@@ -27,7 +27,6 @@ ns.RegisterLocale("esES", {
 	["Delete saved data"] = "Borrar datos guardados",
 	["Level %d is below the minimum (10)"] = "El nivel %d está por debajo del mínimo (10)",
 	["Saved %d slots"] = "%d casillas guardadas",
-	["Macro slots are restored by content; missing macros are created first"] = "Las casillas de macro se restauran por contenido; los macros ausentes se crean primero",
 	["Applied %d slots"] = "%d casillas aplicadas",
 	["Applied %d pet actions"] = "%d acciones de mascota aplicadas",
 	["Created %d macros"] = "%d macros creados",

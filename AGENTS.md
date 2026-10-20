@@ -110,6 +110,8 @@
 - **新增列表一律使用 `M.MakeListRow`，禁止手搓行**。
 - 外观统一（扁平风格、间距、锚定一致），不得破坏原有 UI、不得破坏功能。
 - 所有外部 API 调用优先用现代 `C_*` API，必要时 `pcall` 包裹。
+- **聊天提示只报「结果 + 失败原因」，禁止说明性废话**：成功就一行（`Saved %d slots` / `Applied %d slots`），**只有失败才逐条给原因**（跳过分桶、逐槽明细、`Could not …`）。解释性提示行一律不写——"宏槽位按内容恢复、缺失的宏会先创建"这类就是用户点名的"废话占聊天框"，已从 10 个语种全删，**别再加回来**。所有输出走 `M.Print`，不要自己调 `DEFAULT_CHAT_FRAME:AddMessage`。
+- **插件名一律用 TOC 标题的逐字母渐变（`8845EC → FF00D8`）**：`M.Brand` 是渐变品牌串（`M.Print` 已内置作前缀），`M.BrandTitle(text)` 把任意文本里的 `MzxSpecBar` 换成渐变串（设置窗标题、小地图 tooltip 都用它）。颜色表 `BRAND_COLORS` 抄死在 `Core.lua`（与 TOC 逐字母一致），**禁止写回 `|cffffd200MzxSpecBar|r` 金色纯色，也不许各处自己拼渐变**。
 - 文档字符串/注释用英文或中文均可，但保持与现有文件一致；PowerShell 处理文件时避免 `Get-Content`/`Set-Content`（CJK 会二次编码），用 `[System.IO.File]::ReadAllText/WriteAllText(..., [System.Text.UTF8Encoding]::new($false))` 或专用编辑工具。
 
 ### 发布

@@ -27,7 +27,6 @@ ns.RegisterLocale("ptBR", {
 	["Delete saved data"] = "Excluir dados salvos",
 	["Level %d is below the minimum (10)"] = "O nível %d está abaixo do mínimo (10)",
 	["Saved %d slots"] = "%d espaços salvos",
-	["Macro slots are restored by content; missing macros are created first"] = "Os espaços de macro são restaurados por conteúdo; macros ausentes são criadas primeiro",
 	["Applied %d slots"] = "%d espaços aplicados",
 	["Applied %d pet actions"] = "%d ações de mascote aplicadas",
 	["Created %d macros"] = "%d macros criadas",
