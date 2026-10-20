@@ -183,26 +183,6 @@ jobs:
           echo "metadata: $METADATA"
           printf '%s' "$METADATA" | jq -e . >/dev/null
 
-          ZIPNAME="MzxSpecBar-$VERSION.zip"
-          EXISTING_ID=$(curl -sf -H "X-Api-Token: $CF_API_TOKEN" \
-            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files" 2>/dev/null | \
-            jq -r --arg n "$ZIPNAME" '(if type=="array" then . else .data end) | map(select(.fileName==$n)) | .[0].id // empty' 2>/dev/null | head -1 || true)
-          if [ -n "${EXISTING_ID:-}" ]; then
-            echo "CurseForge 已存在同名文件 id=$EXISTING_ID，改为更新元数据（不重复上传）"
-            CODE=$(curl -sS -o cf-response.json -w '%{http_code}' -X PUT \
-              "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files/$EXISTING_ID" \
-              -H "X-Api-Token: $CF_API_TOKEN" \
-              -H "Content-Type: application/json" \
-              --data-binary "$METADATA" || true)
-            echo "CurseForge update -> HTTP $CODE"
-            if [ "$CODE" = "200" ] || [ "$CODE" = "201" ] || [ "$CODE" = "204" ]; then
-              echo "已更新 CurseForge 文件元数据：$EXISTING_ID"
-              exit 0
-            fi
-            echo "更新响应内容：$(head -c 800 cf-response.json)"
-            exit 1
-          fi
-
           for attempt in 1 2 3; do
             CODE=$(curl -sS -o cf-response.json -w '%{http_code}' -X POST \
               "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/upload-file" \
@@ -212,11 +192,30 @@ jobs:
             echo "CurseForge upload attempt $attempt -> HTTP $CODE"
             if [ "$CODE" = "200" ] || [ "$CODE" = "201" ]; then
               echo "已上传到 CurseForge：$(jq -c '{id, displayName, fileName}' cf-response.json 2>/dev/null || cat cf-response.json)"
-              exit 0
+              break
             fi
             echo "响应内容：$(head -c 800 cf-response.json)"
             sleep 10
           done
 
-          echo "::error::CurseForge 上传失败（HTTP $CODE），见上方响应内容"
-          exit 1
+          if [ "${CODE:-}" != "200" ] && [ "${CODE:-}" != "201" ]; then
+            echo "::error::CurseForge 上传失败（HTTP ${CODE:-}），见上方响应内容"
+            exit 1
+          fi
+
+          # 同名文件自检：CurseForge 每次上传都会新建一个文件条目，
+          # 这里只保留 id 最大的那个，其余同名的删掉，避免用户看到重复下载。
+          ZIPNAME="MzxSpecBar-$VERSION.zip"
+          curl -sf -H "X-Api-Token: $CF_API_TOKEN" \
+            "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files" -o cf-files.json || true
+          echo "cf file list: $(head -c 600 cf-files.json)"
+          DUPES=$(jq -r --arg n "$ZIPNAME" \
+            '(if type=="array" then . else .data end) | map(select(.fileName==$n)) | sort_by(.id) | .[0:-1] | .[].id' \
+            cf-files.json 2>/dev/null || true)
+          for id in $DUPES; do
+            echo "删除重复的 CurseForge 文件 id=$id"
+            curl -s -o /dev/null -w "delete HTTP %{http_code}\n" -X DELETE \
+              "https://wow.curseforge.com/api/projects/$CF_PROJECT_ID/files/$id" \
+              -H "X-Api-Token: $CF_API_TOKEN" || true
+          done
+          echo "CurseForge 上传完成，同名重复文件已清理"
