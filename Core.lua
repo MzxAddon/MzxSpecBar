@@ -381,8 +381,7 @@ function M.MakeHorizontalGradient(frame, fromRGB, toRGB, inset)
 			local s = strips[i]
 			s:ClearAllPoints()
 			s:SetPoint("TOPLEFT", frame, "TOPLEFT", pad + (i - 1) * each, -pad)
-			s:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", pad + (i - 1) * each, pad)
-			s:SetWidth(each + 0.5)
+			s:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -(pad + (n - i) * each), pad)
 		end
 	end
 	layout()
