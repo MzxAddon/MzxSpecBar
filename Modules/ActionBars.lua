@@ -20,7 +20,6 @@ local HERO_TALENT_LEVEL = 71
 local APPLY_ON_LOGIN_DELAY = 2
 local ACTION_SLOT_MAX = 180
 local PET_SLOT_MAX = 10
-local WARN_MAX_LINES = 3
 local MACRO_SCAN_LIMIT = 300
 local MISSED_SLOT_LIST_MAX = 8
 local DETAIL_LINE_MAX = 10
@@ -892,20 +891,14 @@ function mod:Warn(warnings, details)
 			order[#order + 1] = msg
 		end
 	end
-	local out, rest = {}, 0
-	for i, msg in ipairs(order) do
-		if i > WARN_MAX_LINES then
-			rest = rest + 1
-		elseif counts[msg] > 1 then
+	local out = {}
+	for _, msg in ipairs(order) do
+		if counts[msg] > 1 then
 			out[#out + 1] = string.format("%s (%d)", msg, counts[msg])
 		else
 			out[#out + 1] = msg
 		end
 	end
-	if rest > 0 then
-		out[#out + 1] = L["and %d more"]:format(rest)
-	end
-	self.warnings = out
 	for i = #out, 1, -1 do
 		M.Print("|cffffd200!|r " .. out[i])
 	end
@@ -1000,8 +993,6 @@ function mod:StartSave()
 	local warnings = SkipCountWarn(skipped)
 	if #warnings > 0 then
 		self:Warn(warnings)
-	else
-		self.warnings = nil
 	end
 	self:RefreshOptions()
 end
@@ -1027,7 +1018,6 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 	local placed, petPlaced, missed, aborted, created = self:ApplyLayout(layout)
 	if aborted then
 		M.Print(L["Nothing to apply: no saved spell, item or macro is available on this character"])
-		self:Warn({})
 		return
 	end
 	if not silent then
@@ -1067,7 +1057,6 @@ function mod:ApplyLayoutFor(specID, heroID, silent)
 		end
 		self:Warn(warnings, details)
 	else
-		self.warnings = nil
 		self:RefreshOptions()
 	end
 end
@@ -1414,7 +1403,7 @@ function mod:BuildOptions(p)
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
 	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -230)
-	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 44)
+	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 12)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
 
@@ -1523,25 +1512,6 @@ function mod:RefreshOptions()
 	end
 	if used == 0 and p.status then
 		p.status:SetText(L["Nothing saved for this class yet"])
-	end
-
-	local warnings = self.warnings
-	if p.warning then
-		p.warning:Hide()
-	end
-	if warnings and #warnings > 0 then
-		if not p.warning then
-			local w = p:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
-			w:SetPoint("BOTTOMLEFT", p, "BOTTOMLEFT", 12, 6)
-			w:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -30, 6)
-			w:SetWidth((p:GetWidth() or 444) - 42)
-			w:SetJustifyH("LEFT")
-			w:SetNonSpaceWrap(true)
-			w:SetTextColor(1, 0.72, 0.3)
-			p.warning = w
-		end
-		p.warning:SetText(table.concat(warnings, "\n"))
-		p.warning:Show()
 	end
 end
 
