@@ -1394,7 +1394,7 @@ function mod:BuildOptions(p)
 			M._minimapContext("panel")
 		end
 	end, { dock = true })
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -220)
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -204)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
 	switcher:SetScript("OnEnter", function(b)
