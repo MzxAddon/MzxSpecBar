@@ -1352,16 +1352,19 @@ function mod:BuildOptions(p)
 		self:StartSave()
 	end)
 	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
+	M.SetRowButtonIcon(saveOne, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-save.tga", 18)
 
 	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
 	end)
 	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
+	M.SetRowButtonIcon(apply, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-apply.tga", 18)
 
 	local del = M.MakeFlatDangerButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
 	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
+	M.SetRowButtonIcon(del, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-delete.tga", 18)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
 	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -190)
@@ -1372,17 +1375,25 @@ function mod:BuildOptions(p)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -218)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -206)
 	p.listLabel = listLabel
 
 	local specName, specIcon = SpecInfo(SpecID())
-	local switcherWidth = math.min(math.max(132, math.floor(MeasureText(specName) + 42)), 200)
-	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, 30, specName, 20, function()
+	local longest = 0
+	for i = 1, NumSpecializations() do
+		local _, name = SpecInfoByIndex(i)
+		if type(name) == "string" then
+			longest = math.max(longest, MeasureText(name))
+		end
+	end
+	longest = math.max(longest, MeasureText(specName))
+	local switcherWidth = math.floor(longest + 24 + 6 + 16)
+	local switcher = M.MakeFlatIconTextButton(p, switcherWidth, 36, specName, 24, function()
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
 	end)
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -215)
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -218)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
 	switcher:SetScript("OnEnter", function(b)

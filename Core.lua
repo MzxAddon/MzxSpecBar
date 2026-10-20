@@ -320,23 +320,35 @@ function M.SetButtonIcon(b, texPath, iconSize)
 	return tex
 end
 
--- 图标在左、文字在右的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
+-- 图标在左、文字整体居中的普通按钮（图标+文字并存，SetButtonIcon 会清空文字所以不能复用）
 function M.MakeFlatIconTextButton(parent, w, h, text, iconSize, onClick)
 	local b = M.MakeFlatButton(parent, w, h, text, onClick)
 	local tex = b:CreateTexture(nil, "ARTWORK")
 	tex:SetSize(iconSize, iconSize)
-	tex:SetPoint("LEFT", 8, 0)
+	tex:SetPoint("RIGHT", 0, 0)
 	b.icon = tex
-	local fs = b:GetFontString()
-	if fs then
-		fs:ClearAllPoints()
-		fs:SetJustifyV("MIDDLE")
-		fs:SetPoint("LEFT", tex, "RIGHT", 6, 0)
-		fs:SetPoint("RIGHT", b, "RIGHT", -8, 0)
-		fs:SetJustifyH("LEFT")
-	end
+	b.iconSize = iconSize
+	b.iconGap = 6
+	M.LayoutIconTextButton(b)
 	M.ApplyFlatButtonVisual(b)
 	return b
+end
+
+-- 文字与图标作为整体水平居中（图标贴文字左侧，整体偏移让组合居中）
+function M.LayoutIconTextButton(b)
+	local fs = b:GetFontString()
+	if not fs then
+		return
+	end
+	fs:ClearAllPoints()
+	fs:SetJustifyH("CENTER")
+	fs:SetJustifyV("MIDDLE")
+	local shift = (b.icon and b.iconSize) and (b.iconSize + (b.iconGap or 6)) / 2 or 0
+	fs:SetPoint("CENTER", b, "CENTER", shift, 0)
+	if b.icon then
+		b.icon:ClearAllPoints()
+		b.icon:SetPoint("RIGHT", fs, "LEFT", -(b.iconGap or 6), 0)
+	end
 end
 
 function M.SetIconTextButton(b, text, texPath)
@@ -347,7 +359,24 @@ function M.SetIconTextButton(b, text, texPath)
 	if b.icon then
 		b.icon:SetTexture(texPath)
 	end
+	M.LayoutIconTextButton(b)
 	M.ApplyFlatButtonVisual(b)
+end
+
+-- 给整行按钮加一个位于文字左侧的小图标
+function M.SetRowButtonIcon(b, texPath, iconSize)
+	local tex = b.icon
+	if not tex then
+		tex = b:CreateTexture(nil, "ARTWORK")
+		b.icon = tex
+	end
+	b.iconSize = iconSize or 18
+	b.iconGap = 8
+	tex:SetSize(b.iconSize, b.iconSize)
+	tex:SetTexture(texPath)
+	M.LayoutIconTextButton(b)
+	M.ApplyFlatButtonVisual(b)
+	return tex
 end
 
 function M.MakeCloseButton(parent)
