@@ -1268,6 +1268,7 @@ function mod:ContinueLoadout()
 	end
 	self.pendingLoadout = nil
 	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
+	self:RefreshOptions()
 end
 
 function mod:ShowQuickMenu(anchorTo)
@@ -1568,6 +1569,7 @@ function mod:OnEvent(event, ...)
 		if self.pendingLoadout then
 			self.pendingLoadout = nil
 			self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
+			self:RefreshOptions()
 		end
 	elseif event == "GLOBAL_MOUSE_DOWN" then
 		self:OnGlobalMouseDown()
