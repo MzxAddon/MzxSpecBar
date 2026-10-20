@@ -59,6 +59,7 @@ ns.RegisterLocale("ruRU", {
 	["Action bars cannot be changed in combat"] = "Панели команд нельзя менять в бою",
 	["Saved layouts"] = "Сохранённые раскладки",
 	["Hero talent"] = "Геройский талант",
+	["Switch talents"] = "Сменить таланты",
 	["Language"] = "Язык",
 	["Client default"] = "По умолчанию клиента",
 })

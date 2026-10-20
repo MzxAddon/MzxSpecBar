@@ -59,6 +59,7 @@ ns.RegisterLocale("koKR", {
 	["Action bars cannot be changed in combat"] = "전투 중에는 단축바를 변경할 수 없습니다",
 	["Saved layouts"] = "저장된 배치",
 	["Hero talent"] = "영웅 특성",
+	["Switch talents"] = "특성 전환",
 	["Language"] = "언어",
 	["Client default"] = "클라이언트 기본값",
 })

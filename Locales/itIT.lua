@@ -59,6 +59,7 @@ ns.RegisterLocale("itIT", {
 	["Action bars cannot be changed in combat"] = "Impossibile modificare le barre d'azione in combattimento",
 	["Saved layouts"] = "Layout salvati",
 	["Hero talent"] = "Talento eroe",
+	["Switch talents"] = "Cambia talenti",
 	["Language"] = "Lingua",
 	["Client default"] = "Predefinito del client",
 })

@@ -657,6 +657,14 @@ function M:CreateConfigFrame()
 		if f.title then
 			f.title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
 		end
+		local switcher = f.switcher
+		if switcher then
+			switcher:SetShown(M._minimapContext ~= nil)
+			local label = switcher:GetFontString()
+			if label then
+				label:SetText(L["Switch talents"] .. "  " .. M.MouseIcon("R"))
+			end
+		end
 		M:RaiseConfigFrame()
 		M.SnapToPixelGrid(f)
 	end)
@@ -682,8 +690,7 @@ function M:CreateConfigFrame()
 	headerLine:SetColorTexture(1.0, 0.82, 0.20, 0.45)
 
 	local title = f:CreateFontString(nil, "OVERLAY", "GameFontNormal")
-	title:SetPoint("LEFT", header, "LEFT", 12, 0)
-	title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
+	title:SetPoint("LEFT", header, "LEFT", 12, 0)	title:SetText(M.BrandTitle(L["MzxSpecBar Settings"]))
 	f.title = title
 
 	local close = M.MakeCloseButton(f)
@@ -691,6 +698,21 @@ function M:CreateConfigFrame()
 	close:SetScript("OnClick", function()
 		f:Hide()
 	end)
+
+	f:SetScript("OnHide", function()
+		if M._minimapContextHide then
+			M._minimapContextHide()
+		end
+	end)
+
+	local switcher = M.MakeFlatButton(f, 132, 18, L["Switch talents"] .. "  " .. M.MouseIcon("R"), function()
+		if M._minimapContext then
+			M._minimapContext()
+		end
+	end)
+	switcher:SetPoint("RIGHT", close, "LEFT", -6, 0)
+	switcher:SetFrameLevel(f:GetFrameLevel() + 4)
+	f.switcher = switcher
 	pcall(tinsert, UISpecialFrames, "MzxSpecBarConfigFrame")
 
 	f.tabs = {}

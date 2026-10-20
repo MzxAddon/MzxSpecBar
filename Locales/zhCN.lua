@@ -55,10 +55,11 @@ ns.RegisterLocale("zhCN", {
 	["Saved"] = "已保存",
 	["Not saved"] = "未保存",
 	["Could not switch specialization"] = "无法切换专精",
-	["Could not switch configuration"] = "鏃犳硶鍒囨崲涓撶簿閰嶇疆",
+	["Could not switch configuration"] = "无法切换专精配置",
 	["Action bars cannot be changed in combat"] = "战斗中无法改动动作条",
 	["Saved layouts"] = "已保存的方案",
 	["Hero talent"] = "英雄天赋",
+	["Switch talents"] = "切换天赋",
 	["Language"] = "语言",
 	["Client default"] = "跟随客户端",
 })

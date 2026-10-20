@@ -59,6 +59,7 @@ ns.RegisterLocale("zhTW", {
 	["Action bars cannot be changed in combat"] = "戰鬥中無法變更動作條",
 	["Saved layouts"] = "已儲存的設定檔",
 	["Hero talent"] = "英雄天賦",
+	["Switch talents"] = "切換天賦",
 	["Language"] = "語言",
 	["Client default"] = "跟隨客戶端",
 })

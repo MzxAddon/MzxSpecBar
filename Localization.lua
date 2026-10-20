@@ -70,6 +70,7 @@ local en = {
 	"Action bars cannot be changed in combat",
 	"Saved layouts",
 	"Hero talent",
+	"Switch talents",
 	-- 语言
 	"Language",
 	"Client default",

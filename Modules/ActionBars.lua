@@ -107,8 +107,8 @@ end
 
 function mod:OnToggle(on)
 	if on then
-		M:SetMinimapContextHandler(function()
-			local ok, err = pcall(self.ToggleQuickMenu, self)
+		M:SetMinimapContextHandler(function(anchorTo)
+			local ok, err = pcall(self.ToggleQuickMenu, self, anchorTo)
 			if not ok then
 				M.Print(string.format(L["Module %s error: %s"], "actionbars", tostring(err)))
 			end
@@ -1100,6 +1100,10 @@ function mod:GetQuickMenu()
 	local f = CreateFrame("Frame", "MzxSpecBarQuickMenu", UIParent)
 	f:SetFrameStrata("FULLSCREEN_DIALOG")
 	f:SetFrameLevel(9000)
+	f.owner = M.configFrame
+	if f.owner then
+		f:SetFrameLevel(f.owner:GetFrameLevel() + 20)
+	end
 	f:SetSize(QUICK_MENU_MIN_WIDTH, QUICK_MENU_HEIGHT)
 	local setColors = M.MakeFlatSkin(f, 1)
 	setColors(0.42, 0.40, 0.36, 0.95, 0.07, 0.08, 0.10, 0.97)
@@ -1280,29 +1284,49 @@ function mod:ContinueLoadout()
 	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 end
 
-function mod:ShowQuickMenu()
+function mod:ShowQuickMenu(anchorTo)
 	local f = self:GetQuickMenu()
 	self:RefreshQuickMenu()
+	f.anchorOwner = nil
+	local screenW = UIParent:GetWidth() or 1920
+	local menuW = f:GetWidth() or QUICK_MENU_MIN_WIDTH
+	local openDown = true
+	local flipX = false
+	local anchor
 	local button = M.minimapButton
-	if button then
-		local cx, cy = button:GetCenter()
-		local uiWidth = UIParent:GetWidth() or 1920
-		local openDown = not (cy and cy < QUICK_MENU_HEIGHT + 40)
-		local anchor = Minimap or button
-		f:ClearAllPoints()
-		if cx and cx < uiWidth / 2 then
-			if openDown then
-				f:SetPoint("TOPLEFT", anchor, "TOPRIGHT", 10, -6)
-			else
-				f:SetPoint("BOTTOMLEFT", anchor, "TOPRIGHT", 10, 6)
-			end
-		else
-			if openDown then
-				f:SetPoint("TOPRIGHT", anchor, "TOPLEFT", -10, -6)
-			else
-				f:SetPoint("BOTTOMRIGHT", anchor, "TOPLEFT", -10, 6)
-			end
+	if anchorTo then
+		f.anchorOwner = anchorTo
+		anchor = anchorTo
+	elseif button then
+		anchor = Minimap or button
+		local cy = select(2, button:GetCenter())
+		openDown = not (cy and cy < QUICK_MENU_HEIGHT + 40)
+	else
+		anchor = f.owner or UIParent
+	end
+	if anchor ~= UIParent then
+		local ax, ay = anchor:GetCenter()
+		flipX = (ax and ax > screenW / 2) and true or false
+		if anchorTo then
+			local aw = (anchor:GetWidth() or 0) / 2
+			local ah = (anchor:GetHeight() or 0) / 2
+			local spaceUp = (ay or 0) + ah + 6
+			local spaceDown = (UIParent:GetHeight() or 1080) - ((ay or 0) - ah) + 6
+			local need = math.min(QUICK_MENU_HEIGHT, UIParent:GetHeight() or QUICK_MENU_HEIGHT) + 12
+			openDown = spaceDown >= need or spaceDown >= spaceUp
 		end
+	end
+	f:ClearAllPoints()
+	if anchor == UIParent then
+		local x = anchor:GetLeft() or 0
+		f:SetPoint(x + menuW / 2 < screenW / 2 and "TOPLEFT" or "TOPRIGHT", anchor, x + menuW / 2 < screenW / 2 and "TOPLEFT" or "TOPRIGHT", x + menuW / 2 < screenW / 2 and 12 or -12, -12)
+		f:Show()
+		return
+	end
+	if flipX then
+		f:SetPoint(openDown and "TOPRIGHT" or "BOTTOMRIGHT", anchor, "TOPLEFT", -10, openDown and 6 or -6)
+	else
+		f:SetPoint(openDown and "TOPLEFT" or "BOTTOMLEFT", anchor, "TOPRIGHT", 10, openDown and 6 or -6)
 	end
 	f:Show()
 end
@@ -1318,6 +1342,11 @@ function mod:OnGlobalMouseDown()
 	if not f or not f:IsShown() then
 		return
 	end
+	local owner = f.anchorOwner
+	f.anchorOwner = nil
+	if owner and owner:IsVisible() and owner:IsMouseOver() then
+		return
+	end
 	if f:IsMouseOver() then
 		return
 	end
@@ -1328,12 +1357,12 @@ function mod:OnGlobalMouseDown()
 	self:HideQuickMenu()
 end
 
-function mod:ToggleQuickMenu()
+function mod:ToggleQuickMenu(anchorTo)
 	if self.quickMenu and self.quickMenu:IsShown() then
 		self:HideQuickMenu()
 		return
 	end
-	self:ShowQuickMenu()
+	self:ShowQuickMenu(anchorTo)
 end
 
 function mod:DeleteCurrentClass()

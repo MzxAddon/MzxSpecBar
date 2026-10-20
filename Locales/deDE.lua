@@ -59,6 +59,7 @@ ns.RegisterLocale("deDE", {
 	["Action bars cannot be changed in combat"] = "Aktionsleisten können im Kampf nicht geändert werden",
 	["Saved layouts"] = "Gespeicherte Layouts",
 	["Hero talent"] = "Heldentalent",
+	["Switch talents"] = "Talente wechseln",
 	["Language"] = "Sprache",
 	["Client default"] = "Client-Standard",
 })

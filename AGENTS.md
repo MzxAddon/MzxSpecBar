@@ -49,6 +49,8 @@
     - 滚轮/拖拽处理器里**先 `update()` 再读 `bar.maxScroll`/`bar.offset`**（这些值随时可能被刷新改动）；另外 `HookScript("OnSizeChanged", update)` 兜住几何变化。
     - **右键菜单高度恒定 `QUICK_MENU_HEIGHT = 420`，宽度按文字自适应**：`QUICK_MENU_MIN_WIDTH = 236` / `QUICK_MENU_MAX_WIDTH = 560`（暴雪对专精配置名的实际长度上限比想象的长，实测有 30+ 汉字的；560 只是"万一再变长"的兜底，正常永远碰不到）/ `QUICK_MENU_PAD = 22`（右侧滚动条沟槽+边框+文字右留白）。**两遍走**：第一遍用一次性隐藏 `FontString`（`MeasureText`，字体必须与 `row.name` 同为 `GameFontNormal`）量所有名字的最大宽度 → `f:SetWidth(clamp(最长文字 + PAD, MIN, MAX))`；第二遍才填行。**绝不能拿 `rows:GetWidth()` 反推可用宽度**——菜单未显示时它可能还是滚动条兜底值 40（曾导致所有名字被截成 `...`）；也**不要把上限设小**，那等于变相截断（曾设 420 导致长名字冲出菜单右边）。
   - **菜单里不写任何标题/说明文字**：顶部不留标题条（滚动区直接从 `-6` 开始），省掉一行没信息量的字。
+  - **两个入口共用一个菜单，位置各自算**：小地图右键 → `ShowQuickMenu()`（不传参，贴小地图左右边缘、按按钮上下半屏决定向上/向下展开）；设置窗标题栏的「切换天赋」按钮 → `M._minimapContext(M.configFrame)`（模块注册时把 `anchorTo` 透传进来），菜单锚在按钮右侧 `TOPLEFT/TOPRIGHT +10, +6`（按按钮在屏幕左右半边选方向）。**从设置窗打开时菜单 frame level 要高于设置窗**（`f.owner = M.configFrame` → `SetFrameLevel(owner:GetFrameLevel() + 20)`），否则会被 9000 级的配置窗压住。菜单关闭时设置窗不会被顺手关掉（只有 `ToggleConfig` 里才调 `_minimapContextHide`），设置窗关闭时 `OnHide` 反过来关菜单。
+  - **外点关闭要认得"属主控件"**：`f.anchorOwner` 记下锚定的按钮，`OnGlobalMouseDown` 里若鼠标在属主上则不关（否则点按钮的 MouseUp 会先把刚打开的菜单关掉、再被 OnClick 重新打开，看着像闪一下）。属主控件已隐藏时先注销再判 `IsMouseOver`，避免隐藏后的残留状态卡住关闭逻辑。
   - **右键菜单单行行的文字用 `LEFT` 锚点（`SetPoint("LEFT", row, "LEFT", textLeft, 0)` + `SetJustifyV("MIDDLE")`）** → 行高 28 / 26 都能真正垂直居中，不要写死 `TOPLEFT -6`（那是 40px 两行排版的偏移，用在单行上必然歪）。方点/图标仍用 `LEFT` 锚 y=0，自然居中。
     - 列表滚动必须**按行数线性缩放**：滑块高 = `clamp(轨道高 × 可视高/内容高, 24, 轨道高)`（行数上百时自动变短，但永不短于 24px、绝不长过轨道）；滚轮步长 = `max(可视高 × 0.2, 24)`（不能写死 40px，配置一多就变成"一格一行的爬行"）。
   - **面板左右边距统一 12px**：列表的 scroll `TOPLEFT 12 / BOTTOMRIGHT -12`，滚动条右边缘因此与上方整行按钮右边缘对齐；**不要再用 4/-18 这类错位值**，那会造成右边空一大块且参差不齐。
