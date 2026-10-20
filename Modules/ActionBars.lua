@@ -1402,7 +1402,7 @@ function mod:BuildOptions(p)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -230)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -236)
 	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 12)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
