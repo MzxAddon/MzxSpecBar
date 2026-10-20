@@ -1379,7 +1379,7 @@ function mod:BuildOptions(p)
 		if M._minimapContext then
 			M._minimapContext("panel")
 		end
-	end, { dock = true, alt = true, iconBorder = iconBorder, gradient = { from = { 1.00, 0.00, 0.85 }, to = { 0.53, 0.27, 0.93 } } })
+	end, { dock = true, alt = true, iconBorder = iconBorder })
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -13, -204)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
