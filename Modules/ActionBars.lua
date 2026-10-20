@@ -12,6 +12,7 @@ local mod = {
 M:RegisterModule(mod)
 
 M:RegisterModuleEvent("PLAYER_ENTERING_WORLD")
+M:RegisterModuleEvent("PLAYER_SPECIALIZATION_CHANGED")
 M:RegisterModuleEvent("TRAIT_CONFIG_UPDATED")
 M:RegisterModuleEvent("SPELLS_CHANGED")
 M:RegisterModuleEvent("GLOBAL_MOUSE_DOWN")
@@ -1195,8 +1196,8 @@ function mod:RefreshQuickMenu()
 			lastSpec = e.id
 			addRow(e.icon, e.name, e.id == currentSpec, function()
 				self:HideQuickMenu()
-				if e.id ~= currentSpec and not SwitchSpecialization(e.id) then
-					M.Print(L["Could not switch specialization"])
+				if e.id ~= currentSpec then
+					self:SwitchSpecOnly(e.id)
 				end
 			end, { height = QUICK_ROW_HEIGHT, textLeft = QUICK_SPEC_TEXT_LEFT, gapAfter = 2 })
 		else
@@ -1231,29 +1232,13 @@ function mod:ContinueLoadout()
 		return
 	end
 	if SpecID() ~= pending.specID then
+		self.waitingForSpec = pending.specID
 		if not SwitchSpecialization(pending.specID) then
+			self.waitingForSpec = nil
 			self.pendingLoadout = nil
 			M.Print(L["Could not switch specialization"])
 			return
 		end
-		local function waitSpec(delay)
-			C_Timer.After(delay, function()
-				if self.pendingLoadout ~= pending then
-					return
-				end
-				if SpecID() ~= pending.specID then
-					if delay > 0.3 then
-						waitSpec(0.35)
-						return
-					end
-					self.pendingLoadout = nil
-					M.Print(L["Could not switch specialization"])
-					return
-				end
-				self:ContinueLoadout()
-			end)
-		end
-		waitSpec(0.25)
 		return
 	end
 	if type(C_ClassTalents) == "table" and type(C_ClassTalents.LoadConfig) == "function" then
@@ -1533,26 +1518,38 @@ function mod:ApplySpec(specID, heroID)
 		M.Print(L["Could not switch specialization"])
 		return
 	end
-	local function waitForSwitch(delay)
-		C_Timer.After(delay, function()
-			local pending = self.pendingSpec
-			if not pending then
-				return
-			end
-			if SpecID() ~= pending then
-				if delay > 0.3 then
-					self.pendingSpec = nil
-					M.Print(L["Could not switch specialization"])
-					return
-				end
-				waitForSwitch(0.35)
-				return
-			end
-			self.pendingSpec = nil
-			self.awaitSpecRefresh = true
-		end)
+	self.waitingForSpec = specID
+end
+
+function mod:SwitchSpecOnly(specID)
+	specID = AsID(specID)
+	if SpecID() == specID then
+		return
 	end
-	waitForSwitch(0.25)
+	if self.pendingSpec then
+		return
+	end
+	self.pendingSpec = specID
+	if not SwitchSpecialization(specID) then
+		self.pendingSpec = nil
+		M.Print(L["Could not switch specialization"])
+		return
+	end
+	self.waitingForSpec = specID
+end
+
+function mod:OnSpecSettled()
+	self.waitingForSpec = nil
+	if self.pendingSpec then
+		self.pendingSpec = nil
+		self.awaitSpecRefresh = true
+		self:RefreshOptions()
+		return
+	end
+	if self.pendingLoadout then
+		self:ContinueLoadout()
+		return
+	end
 end
 
 function mod:OnEvent(event, ...)
@@ -1565,6 +1562,10 @@ function mod:OnEvent(event, ...)
 			C_Timer.After(APPLY_ON_LOGIN_DELAY, function()
 				self:ApplyCurrent(true)
 			end)
+		end
+	elseif event == "PLAYER_SPECIALIZATION_CHANGED" then
+		if self.waitingForSpec and SpecID() == self.waitingForSpec then
+			self:OnSpecSettled()
 		end
 	elseif event == "TRAIT_CONFIG_UPDATED" then
 		if self.pendingLoadout then
