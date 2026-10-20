@@ -1281,57 +1281,11 @@ function mod:ContinueLoadout()
 	self:ApplyLayoutFor(SpecID(), HeroTreeID(), false)
 end
 
-function mod:AnchorQuickMenu(f, anchorTo)
-	local menuW = f:GetWidth() or 236
-	local menuH = math.min(f:GetHeight() or 420, UIParent:GetHeight() or 1080)
-	local screenW = UIParent:GetWidth() or 1920
-	local screenH = UIParent:GetHeight() or 1080
-	local minX, maxX, minY, maxY
-	local owner
-	if anchorTo == "minimap" then
-		owner = M.minimapButton
-		local cx, cy = owner and owner:GetCenter()
-		if cx and cy then
-			local half = (owner:GetWidth() or 31) / 2
-			minX, maxX = cx - half, cx + half
-			minY, maxY = cy - half, cy + half
-		else
-			local radius = M.minimapButtonRadius or 20
-			cx, cy = screenW - radius, screenH - radius
-			minX, maxX = cx - radius, cx + radius
-			minY, maxY = cy - radius, cy + radius
-		end
-	else
-		owner = M.configFrame or self.optionsFrame
-		local cx, cy = owner and owner:GetCenter()
-		if not (cx and cy) then
-			return false
-		end
-		local sw, sh = (owner:GetWidth() or 444) / 2, (owner:GetHeight() or 544) / 2
-		minX, maxX = cx - sw, cx + sw
-		minY, maxY = cy - sh, cy + sh
-	end
-	local gap = 12
-	local spaceRight = math.max(screenW - maxX - gap, 0)
-	local spaceLeft = math.max(minX - gap, 0)
-	local spaceBelow = math.max(minY - gap, 0)
-	local spaceAbove = math.max(screenH - maxY - gap, 0)
-	local x = (spaceRight >= menuW or spaceRight >= spaceLeft) and (maxX + gap) or (minX - menuW - gap)
-	local y = (spaceBelow >= menuH or spaceBelow >= spaceAbove) and (minY - menuH - gap) or (maxY + gap)
-	x = math.max(0, math.min(screenW - menuW, x))
-	y = math.max(0, math.min(screenH - menuH, y))
-	f:SetFrameLevel(math.min((M.configLevel or 9000) + 12, 9999))
-	f:ClearAllPoints()
-	f:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", math.floor(x + 0.5), math.floor(y + menuH + 0.5))
-	return true
-end
-
 function mod:ShowQuickMenu(anchorTo)
 	local f = self:GetQuickMenu()
 	self:RefreshQuickMenu()
-	if not self:AnchorQuickMenu(f, anchorTo) then
-		return
-	end
+	f.anchorOwner = anchorTo
+	M:PlaceQuickMenu(f, nil, anchorTo)
 	f:Show()
 end
 
@@ -1346,25 +1300,23 @@ function mod:OnGlobalMouseDown()
 	if not f or not f:IsShown() then
 		return
 	end
+	local owner = f.anchorOwner
+	f.anchorOwner = nil
+	if owner and owner:IsVisible() and owner:IsMouseOver() then
+		return
+	end
 	if f:IsMouseOver() then
 		return
 	end
-	local b = M.minimapButton
-	if b and b:IsMouseOver() then
+	local button = M.minimapButton
+	if button and button:IsMouseOver() then
 		return
-	end
-	local p = self.optionsFrame
-	if p and p:IsVisible() then
-		local sw = p.switcher
-		if sw and sw:IsVisible() and sw:IsMouseOver() then
-			return
-		end
 	end
 	self:HideQuickMenu()
 end
 
 function mod:ToggleQuickMenu(anchorTo)
-	if anchorTo ~= "panel" and self.quickMenu and self.quickMenu:IsShown() then
+	if self.quickMenu and self.quickMenu:IsShown() then
 		self:HideQuickMenu()
 		return
 	end
@@ -1423,19 +1375,18 @@ function mod:BuildOptions(p)
 	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -210)
 	p.listLabel = listLabel
 
-	local switcher = M.MakeFlatButton(p, 132, 22, label, function()
+	local switcher = M.MakeFlatButton(p, 132, 22, label, function(self)
 		if M._minimapContext then
-			M._minimapContext("panel")
+			M._minimapContext(self)
 		end
 	end)
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -207)
-	switcher:SetFrameLevel(p:GetFrameLevel() + 3)
 	p.switcher = switcher
 	p.switcherLabel = label
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
 	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -242)
-	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 66)
+	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 62)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
 
@@ -1456,7 +1407,6 @@ function mod:RefreshOptions()
 	end
 	if p.switcher then
 		p.switcher:SetShown(M._minimapContext ~= nil)
-		p.switcher:SetFrameLevel(p:GetFrameLevel() + 3)
 		local label = p.switcher:GetFontString()
 		if label and p.switcherLabel then
 			label:SetText(p.switcherLabel)
