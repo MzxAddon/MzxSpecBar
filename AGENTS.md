@@ -16,6 +16,14 @@
 - 主项目内不写测试代码、探针、诊断代码。
 - 只支持 retail；不做移植、不加兼容层。
 
+### 工作纪律（通用，优先于任何具体任务的执行方式）
+- **不确定就先查，查不到就问用户。绝不靠"猜 + 多改几版试错"来推进。** 每个猜测都要先找到依据（读代码 / 读日志 / 查文档 / 问用户），没有依据就问。**猜错了再来一版，只是在把不确定性往下推。**
+- **一次只改一处，改完立刻验证。** 不要一口气堆多个改动——出错时无法定位是哪一处引起的。
+- **工具调用没返回成功 = 什么都没发生。** 不要把"我打算调用"当成"已经调用"。发出后必须看到返回结果再继续；调用失败就重发或停下报告，**绝不能让对话卡在半截、也不要谎称已执行**。
+- **区分「已核实的事实」和「我的推断」**，汇报时分开写。没验证过的东西就说没验证过，**不得声称"零错误""已修复""已生效"**。
+- **不要在同一个方向上连续试错超过两次。** 连续两次不对就停下，换思路或问用户。
+- **改了代码就自己核对**（读回改后的段落、跑 `check.js` / `i18naudit.js`），不要改完就报喜。
+
 ### 核心（Core.lua）
 - `local ADDON, ns = ...`；`ns.M = M`；`ns.L = L`（来自 `Localization.lua` 的词库回退）。
 - `M` 本身是 Frame（`CreateFrame("Frame")`），`SetScript("OnEvent")` 后才能 `RegisterEvent`。`PLAYER_LOGIN` 由核心注册：InitDB、套语言、ApplyModuleStates、小地图按钮。
@@ -133,8 +141,21 @@
 - 文档字符串/注释用英文或中文均可，但保持与现有文件一致；PowerShell 处理文件时避免 `Get-Content`/`Set-Content`（CJK 会二次编码），用 `[System.IO.File]::ReadAllText/WriteAllText(..., [System.Text.UTF8Encoding]::new($false))` 或专用编辑工具。
 
 ### 发布
-- `.github/workflows/release.yml`：推 `v*` 标签或 `workflow_dispatch`（version / game_version / changelog / release_type）→ 校验 TOC `## Version` 与标签一致 → 打包（排除 `.git/`、`.github/`、`*.md`、`*.zip`、图标源 PNG）→ GitHub Release → CurseForge 上传。
+
+#### 发布纪律（优先级最高，违反就是事故）
+- **一个版本号 = 跑一次发布流水线。跑完就停。** 不管结果满不满意，**都不许再跑第二次**。发布不是调试，不能靠"多跑几次看看"来试错。
+- **发布前必须先查清 CF 现状**：同一个版本号在 CF 上**只能有一个文件条目**。已有同名条目 → **不要上传**，先去 CF 网页后台删掉旧的（或用有删除权限的 token 走 `cleanup_file_ids`）。**没查清就上传 = 制造重复条目，而本仓库的 token 删不掉它们。**
+- **发布前必查清单**：① 工作区干净（`git status` 干净）→ ② TOC / `Core.lua` / 本文件三处版本号一致 → ③ `check.js` + `i18naudit.js` 全绿 → ④ **changelog 已定稿**（不是草稿、不是 `git log`）→ ⑤ **CF 上无同版本号旧条目**。
+- **发布后必查清单**：① GitHub Release 正文**读回确认是定稿内容**（不是 `* commit...` 提交列表）→ ② asset 存在且大小合理 → ③ CF 上传 HTTP 200 → ④ **把结果原样报告给用户，然后停手等指示**。
+- **改发布说明的正确做法**：GitHub 侧用 `PATCH /repos/{owner}/{repo}/releases/{id}`（传 `body`）**原地改**；CF 侧单独更新该文件条目的元数据。**绝对不许为了改说明去重跑发布流水线**（那会叠加新的 CF 条目）。
+- **重跑流水线必须带 `changelog`**：`changelog` 留空会退回 `git log` 生成的提交列表，**把 GitHub Release 正文覆盖成提交列表**。这是已发生过的事故。
+- **发现问题时先回滚 + 报告，不要"再跑一次试试"**。发布流水线是有外部副作用的（CF 上留下删不掉的条目），不是可以随手重试的操作。
+- **不确定就先查、查不到就问用户**，不要靠猜 + 重试来试错。发布相关的每一次猜测都可能留下不可逆的外部痕迹。
+
+#### 流程与配置
+- `.github/workflows/release.yml`：推 `v*` 标签或 `workflow_dispatch`（version / game_version / changelog / release_type / cleanup_file_ids）→ 校验 TOC `## Version` 与标签一致 → 打包（排除 `.git/`、`.github/`、`*.md`、`*.zip`、图标源 PNG）→ GitHub Release → CurseForge 上传。
 - 版本号改动必须三处同步：`MzxSpecBar.toc` 的 `## Version`、`Core.lua` 的 `M.version`、本文件。
+- **`cleanup_file_ids` 输入**：填了就**只删除指定 id、不上传**，用于清理重复条目。**但本仓库的 `CF_API_TOKEN` 没有删除权限，用它无效**——重复条目只能去 CF 网页后台手删。
 - **CurseForge 项目描述 = 仓库根目录的 `CurseForgeDescription.md`**（英文 Markdown，随仓库维护，打包时被 `*.md` 排除规则自动剔除）。**它是冻结契约：发版时一律不改**，目标是"发几个版本都不用动它、一直用到关服"。规矩：
   - CF API 改不了项目描述，所以**不要只说"需要用户手动粘贴"就收工**——必须**主动把完整 Markdown 内容给出来**（写文件 + 在回复里给出全文）。
   - **只写长期不变的用户可见行为**。禁止出现：插件版本号、Interface 号、游戏版本名（Midnight/12.x）、暴雪 API 名、精确 UI 文案（按钮/勾选框/面板标题原文）、魔数（动作槽 180、等级门槛 10）、模块内部 key（`actionbars`）。
