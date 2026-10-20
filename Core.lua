@@ -630,6 +630,12 @@ function M:RaiseConfigFrame()
 	for _, tab in pairs(f.tabs or {}) do
 		tab:SetFrameLevel(base + 3)
 	end
+	for _, mod in ipairs(self.moduleList) do
+		local p = mod.optionsFrame
+		if p then
+			p:SetFrameLevel(base + 2)
+		end
+	end
 end
 
 function M:CreateConfigFrame()

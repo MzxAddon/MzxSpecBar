@@ -1287,22 +1287,27 @@ function mod:AnchorQuickMenu(f, anchorTo)
 	local screenW = UIParent:GetWidth() or 1920
 	local screenH = UIParent:GetHeight() or 1080
 	local minX, maxX, minY, maxY
+	local owner
 	if anchorTo == "minimap" then
-		local b = M.minimapButton
-		local radius = M.minimapButtonRadius or 20
-		local cx, cy = b and b:GetCenter()
-		if not (cx and cy) then
+		owner = M.minimapButton
+		local cx, cy = owner and owner:GetCenter()
+		if cx and cy then
+			local half = (owner:GetWidth() or 31) / 2
+			minX, maxX = cx - half, cx + half
+			minY, maxY = cy - half, cy + half
+		else
+			local radius = M.minimapButtonRadius or 20
 			cx, cy = screenW - radius, screenH - radius
+			minX, maxX = cx - radius, cx + radius
+			minY, maxY = cy - radius, cy + radius
 		end
-		minX, maxX = cx - radius, cx + radius
-		minY, maxY = cy - radius, cy + radius
 	else
-		local p = self.optionsFrame
-		local cx, cy = p and p:GetCenter()
+		owner = M.configFrame or self.optionsFrame
+		local cx, cy = owner and owner:GetCenter()
 		if not (cx and cy) then
 			return false
 		end
-		local sw, sh = (p:GetWidth() or 444) / 2, (p:GetHeight() or 544) / 2
+		local sw, sh = (owner:GetWidth() or 444) / 2, (owner:GetHeight() or 544) / 2
 		minX, maxX = cx - sw, cx + sw
 		minY, maxY = cy - sh, cy + sh
 	end
@@ -1327,7 +1332,6 @@ function mod:ShowQuickMenu(anchorTo)
 	if not self:AnchorQuickMenu(f, anchorTo) then
 		return
 	end
-	f.anchorOwner = anchorTo
 	f:Show()
 end
 
@@ -1342,16 +1346,19 @@ function mod:OnGlobalMouseDown()
 	if not f or not f:IsShown() then
 		return
 	end
+	if f:IsMouseOver() then
+		return
+	end
 	local b = M.minimapButton
 	if b and b:IsMouseOver() then
 		return
 	end
-	if f:IsMouseOver() then
-		return
-	end
 	local p = self.optionsFrame
-	if p and p:IsVisible() and p:IsMouseOver() then
-		return
+	if p and p:IsVisible() then
+		local sw = p.switcher
+		if sw and sw:IsVisible() and sw:IsMouseOver() then
+			return
+		end
 	end
 	self:HideQuickMenu()
 end
@@ -1422,6 +1429,7 @@ function mod:BuildOptions(p)
 		end
 	end)
 	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -12, -207)
+	switcher:SetFrameLevel(p:GetFrameLevel() + 3)
 	p.switcher = switcher
 	p.switcherLabel = label
 
@@ -1448,6 +1456,7 @@ function mod:RefreshOptions()
 	end
 	if p.switcher then
 		p.switcher:SetShown(M._minimapContext ~= nil)
+		p.switcher:SetFrameLevel(p:GetFrameLevel() + 3)
 		local label = p.switcher:GetFontString()
 		if label and p.switcherLabel then
 			label:SetText(p.switcherLabel)
