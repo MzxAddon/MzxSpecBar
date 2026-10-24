@@ -1344,26 +1344,26 @@ function mod:BuildOptions(p)
 	local saveOne = M.MakeFlatButton(p, buttonWidth, 26, L["Save current specialization"], function()
 		self:StartSave()
 	end)
-	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
-	saveOne:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -86)
+	saveOne:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -360)
+	saveOne:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -360)
 	M.SetRowButtonIcon(saveOne, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-save.tga", 18)
 
 	local apply = M.MakeFlatButton(p, buttonWidth, 26, L["Apply current specialization"], function()
 		self:ApplyCurrent(false)
 	end)
-	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -116)
-	apply:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -116)
+	apply:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -390)
+	apply:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -390)
 	M.SetRowButtonIcon(apply, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-apply.tga", 18)
 
 	local del = M.MakeFlatDangerButton(p, buttonWidth, 26, L["Delete saved data"], function()
 		self:DeleteCurrentClass()
 	end)
-	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -146)
-	del:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -146)
+	del:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -420)
+	del:SetPoint("TOPRIGHT", p, "TOPRIGHT", -12, -420)
 	M.SetRowButtonIcon(del, "Interface\\AddOns\\MzxSpecBar\\Textures\\icon-delete.tga", 18)
 
 	local status = p:CreateFontString(nil, "OVERLAY", "GameFontNormalSmall")
-	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -190)
+	status:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -86)
 	status:SetPoint("TOPRIGHT", p, "TOPRIGHT", -(12 + switcherWidth + 8), 0)
 	status:SetJustifyH("LEFT")
 	status:SetNonSpaceWrap(true)
@@ -1371,7 +1371,7 @@ function mod:BuildOptions(p)
 	p.status = status
 
 	local listLabel = M.MakeSectionLabel(p, L["Saved layouts"])
-	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -206)
+	listLabel:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -102)
 	p.listLabel = listLabel
 
 	local specName, specIcon = SpecInfo(SpecID())
@@ -1383,7 +1383,7 @@ function mod:BuildOptions(p)
 			M._minimapContext("panel")
 		end
 	end, { dock = true, alt = true, iconBorder = iconBorder })
-	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -13, -204)
+	switcher:SetPoint("RIGHT", p, "TOPRIGHT", -13, -100)
 	p.switcher = switcher
 	M.SetIconTextButton(switcher, specName, specIcon)
 	switcher:SetScript("OnEnter", function(b)
@@ -1402,8 +1402,8 @@ function mod:BuildOptions(p)
 	end)
 
 	local scroll = CreateFrame("ScrollFrame", nil, p)
-	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -236)
-	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 12)
+	scroll:SetPoint("TOPLEFT", p, "TOPLEFT", 12, -132)
+	scroll:SetPoint("BOTTOMRIGHT", p, "BOTTOMRIGHT", -12, 116)
 	pcall(scroll.SetClippingEnabled, scroll, true)
 	p.scroll = scroll
 
